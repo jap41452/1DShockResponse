@@ -182,10 +182,18 @@
     line-height:1.25;
   }
 
-/* PSD charts appear to the right of the table area */
-.psdCharts{
-  margin-top:10px;
+/* Random PSD panel: 2-column layout */
+.psdGrid{
   display:grid;
+  grid-template-columns: 1fr 1.35fr; /* left table, right charts */
+  gap:12px;
+  align-items:start;
+}
+
+.psdLeft{ min-width: 260px; }
+
+.psdRight{
+  display:grid;                 /* two charts side-by-side */
   grid-template-columns: 1fr 1fr;
   gap:10px;
 }
@@ -204,16 +212,17 @@
 
 #psdChart, #randChart{
   width:100%;
-  height:160px;
+  height:170px;
+}
+
+/* Responsive: stack charts under table on small screens */
+@media (max-width: 860px){
+  .psdGrid{ grid-template-columns: 1fr; }
+  .psdRight{ grid-template-columns: 1fr; }
 }
 
 
 
-  @media (max-width: 860px){
-    .upper{ grid-template-columns: 1fr; }
-    canvas#schem{ width: 360px; height: 240px; }
-    .ctl{ margin-left:0; }
-  }
 </style>
 </head>
 
@@ -266,31 +275,53 @@
         pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
       </div>
 
-      <!-- Random PSD panel -->
-      <div class="psdPanel" id="psdPanel">
-        <div class="psdTitle">Random input PSD (up to 5 points)</div>
-        <table class="psdTbl">
-          <thead>
-            <tr>
-              <th style="width:50%">Frequency (Hz)</th>
-              <th style="width:50%">PSD (g²/Hz)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 5 rows -->
-            <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
-            <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
-            <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
-            <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
-            <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
-          </tbody>
-        </table>
+<!-- Random PSD panel -->
+<div class="psdPanel" id="psdPanel">
+  <div class="psdGrid">
+    <!-- LEFT: inputs -->
+    <div class="psdLeft">
+      <div class="psdTitle">Random input PSD (up to 5 points)</div>
 
-        <div class="psdBtnRow">
-<button class="btn" id="buildRandom">Build Random g(t)</button>
+      <table class="psdTbl">
+        <thead>
+          <tr>
+            <th style="width:50%">Frequency (Hz)</th>
+            <th style="width:50%">PSD (g²/Hz)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
+          <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
+          <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
+          <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
+          <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
+        </tbody>
+      </table>
 
-          <div class="psdNote" id="psdStatus">Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.</div>
+      <div class="psdBtnRow">
+        <button class="btn" id="buildRandom">Build Random g(t)</button>
+        <div class="psdNote" id="psdStatus">
+          Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.
         </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: charts (hidden until built) -->
+    <div class="psdRight" id="psdCharts" style="display:none;">
+      <div class="psdChartBox">
+        <div class="psdChartTitle">PSD (g²/Hz)</div>
+        <canvas id="psdChart"></canvas>
+      </div>
+      <div class="psdChartBox">
+        <div class="psdChartTitle">Random base accel, g(t)</div>
+        <canvas id="randChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>  
+
+
+
       
 <div class="psdBtnRow">
   <button class="btn" id="buildRandom">Build Random g(t)</button>
@@ -1199,6 +1230,7 @@ renderRandomCharts();
 </script>
 </body>
 </html>
+
 
 
 
