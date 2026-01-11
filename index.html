@@ -144,6 +144,7 @@
     padding:8px;
     border:1px solid #333;
     background:#efefef;
+grid-column: 1 / -1; 
   }
   .psdTitle{
     font-size:12px;
@@ -243,109 +244,81 @@
     <div class="r">XL4sim</div>
   </div>
 
-  <div class="upper">
-    <!-- Inputs -->
-    <div>
-      <div class="rows" style="padding:4px 2px 0;">
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">W</div><div class="tri"></div></div>
-        <div><input id="W" type="number" step="any" value="10"></div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">k</div><div class="tri"></div></div>
-        <div><input id="k" type="number" step="any" value="2000"></div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">c</div><div class="tri"></div></div>
-        <div><input id="c" type="number" step="any" value="5"></div>
+<div class="upper">
+  <!-- Column 1: Inputs -->
+  <div>
+    <div class="rows" style="padding:4px 2px 0;">
+      <!-- your inputs exactly as-is -->
+      ...
+    </div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">g</div><div class="tri"></div></div>
-        <div><input id="g" type="number" step="any" value="386.09"></div>
+    <div class="hint">
+      Inputs: W, k, c, gravitational constant g, peak shock level G<sub>pk</sub> in g’s,
+      pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
+    </div>
+  </div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">G<sub>pk</sub></div><div class="tri"></div></div>
-        <div><input id="Gpk" type="number" step="any" value="10"></div>
+  <!-- Column 2: Summary -->
+  <div>
+    <div class="summaryRows" style="padding:4px 2px 0;">
+      <!-- your summary rows exactly as-is -->
+      ...
+    </div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">T<sub>p</sub></div><div class="tri"></div></div>
-        <div><input id="Tp" type="number" step="any" value="20"></div>
+    <div class="hint">
+      Derived live from inputs. Auto-stop: pulse + 20 response cycles (or Random duration = 20 response cycles).
+    </div>
+  </div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">&#916;t</div><div class="tri"></div></div>
-        <div><input id="dt" type="number" step="any" value="0.05"></div>
+  <!-- Column 3: Schematic -->
+  <div class="schem">
+    <canvas id="schem" width="520" height="340"></canvas>
+  </div>
 
-        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">shape</div><div class="tri"></div></div>
-        <div>
-          <select id="shape">
-            <option value="halfSine">1/2 sine</option>
-            <option value="triangular">triangular</option>
-            <option value="rectangular">rectangular</option>
-            <option value="sawtooth">sawtooth</option>
-            <option value="random">Random</option>
-          </select>
+  <!-- Row 2 (spans all columns): Random PSD panel -->
+  <div class="psdPanel" id="psdPanel">
+    <div class="psdGrid">
+      <div class="psdLeft">
+        <div class="psdTitle">Random input PSD (up to 5 points)</div>
+
+        <table class="psdTbl">
+          <thead>
+            <tr>
+              <th style="width:50%">Frequency (Hz)</th>
+              <th style="width:50%">PSD (g²/Hz)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
+            <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
+            <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
+            <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
+            <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
+          </tbody>
+        </table>
+
+        <div class="psdBtnRow">
+          <button class="btn" id="buildRandom">Build Random g(t)</button>
+          <div class="psdNote" id="psdStatus">
+            Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.
+          </div>
         </div>
       </div>
 
-      <div class="hint">
-        Inputs: W, k, c, gravitational constant g, peak shock level G<sub>pk</sub> in g’s,
-        pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
-      </div>
-
-
-
-
-
-
-
-<!-- Random PSD panel -->
-<div class="psdPanel" id="psdPanel">
-  <div class="psdGrid">
-    <!-- LEFT: inputs -->
-    <div class="psdLeft">
-      <div class="psdTitle">Random input PSD (up to 5 points)</div>
-
-      <table class="psdTbl">
-        <thead>
-          <tr>
-            <th style="width:50%">Frequency (Hz)</th>
-            <th style="width:50%">PSD (g²/Hz)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
-          <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
-          <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
-          <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
-          <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
-        </tbody>
-      </table>
-
-      <div class="psdBtnRow">
-        <button class="btn" id="buildRandom">Build Random g(t)</button>
-        <div class="psdNote" id="psdStatus">
-          Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.
+      <div class="psdRight" id="psdCharts" style="display:none;">
+        <div class="psdChartBox">
+          <div class="psdChartTitle">PSD (g²/Hz)</div>
+          <canvas id="psdChart"></canvas>
+        </div>
+        <div class="psdChartBox">
+          <div class="psdChartTitle">Random base accel, g(t)</div>
+          <canvas id="randChart"></canvas>
         </div>
       </div>
     </div>
-
-    <!-- RIGHT: charts (hidden until built) -->
-    <div class="psdRight" id="psdCharts" style="display:none;">
-      <div class="psdChartBox">
-        <div class="psdChartTitle">PSD (g²/Hz)</div>
-        <canvas id="psdChart"></canvas>
-      </div>
-      <div class="psdChartBox">
-        <div class="psdChartTitle">Random base accel, g(t)</div>
-        <canvas id="randChart"></canvas>
-      </div>
-</div>  
-</div>  
-</div>   <!-- end psdPanel -->
-
-</div>   <!-- IMPORTANT: closes the Inputs column -->
-
-<!-- Summary -->
-<div>
-  ...
-</div>
-
-<!-- Schematic -->
-<div class="schem">
-  ...
+  </div>
 </div>
 
 
@@ -1246,6 +1219,7 @@ renderRandomCharts();
 </script>
 </body>
 </html>
+
 
 
 
