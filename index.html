@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>1D Shock Response</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  :root{
+    --w: 920px;
+    --border:#9aa4b2;
+    --panel:#d9d9d9;
+    --ink:#0b1220;
+    --red:#c00000;
+  }
+  body{ margin:0; background:#fff; font-family: Arial, Helvetica, sans-serif; color:var(--ink); }
+  .wrap{
+    width: min(var(--w), calc(100vw - 16px));
+    margin: 10px auto 18px;
+    border:1px solid var(--border);
+    background: var(--panel);
+  }
+  .topbar{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    align-items:center;
+    padding:6px 10px;
+    background:#cfcfcf;
+    border-bottom:1px solid var(--border);
+    font-weight:700;
+    font-size:14px;
+  }
+  .topbar .r{ text-align:center; }
+
+  .upper{
+    display:grid;
+    grid-template-columns: 260px 250px 1fr;
+    gap:10px;
+    padding:10px;
+  }
+
+  .rows{
+    display:grid;
+    grid-template-columns: 40px 1fr;
+    row-gap:8px;
+    column-gap:10px;
+    align-items:center;
+    font-size:13px;
+  }
+  .lab{ display:flex; align-items:center; gap:6px; }
+  .tri{
+    width:0;height:0;
+    border-left:7px solid transparent;
+    border-top:7px solid var(--red);
+    transform: rotate(45deg);
+    margin-left:2px;
+  }
+  input, select{
+    width:100%;
+    height:22px;
+    padding:2px 6px;
+    font-size:13px;
+    border:1px solid #333;
+    background:#fff;
+    box-sizing:border-box;
+  }
+  select{ padding:1px 4px; }
+
+  .summaryRows{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap:8px;
+    column-gap:10px;
+    align-items:center;
+    font-size:13px;
+  }
+  .sumLab{ display:flex; align-items:center; gap:6px; }
+  .sumVal{ font-weight:700; }
+
+  .schem{
+    background: var(--panel);
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+  canvas#schem{
+    width: 220px;
+    height: 150px;
+    background: var(--panel);
+  }
+
+  .controls{
+    padding: 0 10px 8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .btn{
+    height:24px;
+    padding:0 10px;
+    border:1px solid #333;
+    background:#f2f2f2;
+    font-weight:700;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+  .ctl{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    margin-left:auto;
+  }
+  input[type="range"]{ height:auto; }
+
+  .plotWrap{
+    background:#fff;
+    border-top:1px solid var(--border);
+    padding:8px 10px 10px;
+  }
+  .plotBox{
+    background:#fff;
+    border:1px solid #333;
+    padding:6px;
+  }
+  #chart{ width:100%; height:290px; }
+
+  .hint{
+    padding: 0 10px 8px;
+    font-size:11px;
+    opacity:.8;
+  }
+
+  @media (max-width: 860px){
+    .upper{ grid-template-columns: 1fr; }
+    canvas#schem{ width: 260px; height: 170px; }
+    .ctl{ margin-left:0; }
+  }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>1D Shock Response</div>
+    <div class="r">XL4sim</div>
+  </div>
+
+  <div class="upper">
+    <!-- Inputs -->
+    <div>
+      <div class="rows" style="padding:4px 2px 0;">
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">W</div><div class="tri"></div></div>
+        <div><input id="W" type="number" step="any" value="10"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">k</div><div class="tri"></div></div>
+        <div><input id="k" type="number" step="any" value="2000"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">c</div><div class="tri"></div></div>
+        <div><input id="c" type="number" step="any" value="5"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">g</div><div class="tri"></div></div>
+        <div><input id="g" type="number" step="any" value="386.09"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">G<sub>pk</sub></div><div class="tri"></div></div>
+        <div><input id="Gpk" type="number" step="any" value="10"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">T<sub>p</sub></div><div class="tri"></div></div>
+        <div><input id="Tp" type="number" step="any" value="20"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">&#916;t</div><div class="tri"></div></div>
+        <div><input id="dt" type="number" step="any" value="0.05"></div>
+
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">shape</div><div class="tri"></div></div>
+        <div>
+          <select id="shape">
+            <option value="halfSine">1/2 sine</option>
+            <option value="triangular">triangular</option>
+            <option value="rectangular">rectangular</option>
+            <option value="sawtooth">sawtooth</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hint">
+        Inputs: W, k, c, gravitational constant g (386.09 in/s² typical), peak shock level G<sub>pk</sub> in g’s,
+        pulse duration T<sub>p</sub> in ms, integration step &#916;t in ms.
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div>
+      <div class="summaryRows" style="padding:4px 2px 0;">
+        <div class="sumLab"><div style="width:64px;font-weight:700;">f<sub>n</sub></div><div class="tri"></div></div>
+        <div class="sumVal" id="fn">—</div>
+
+        <div class="sumLab"><div style="width:64px;font-weight:700;">c<sub>c</sub></div><div class="tri"></div></div>
+        <div class="sumVal" id="cc">—</div>
+
+        <div class="sumLab"><div style="width:64px;font-weight:700;">&#950;</div><div class="tri"></div></div>
+        <div class="sumVal" id="zeta">—</div>
+
+        <div class="sumLab"><div style="width:110px;font-weight:700;">t stop</div><div class="tri"></div></div>
+        <div class="sumVal" id="tStop">—</div>
+
+        <div class="sumLab"><div style="width:110px;font-weight:700;">base g max</div><div class="tri"></div></div>
+        <div class="sumVal" id="gmaxB">—</div>
+
+        <div class="sumLab"><div style="width:110px;font-weight:700;">weight g max</div><div class="tri"></div></div>
+        <div class="sumVal" id="gmaxW">—</div>
+      </div>
+
+      <div class="hint">
+        Derived live from inputs. Auto-stop: shock pulse + 20 response cycles.
+      </div>
+    </div>
+
+    <!-- Schematic -->
+    <div class="schem">
+      <canvas id="schem" width="440" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="run">Run</button>
+    <button class="btn" id="pause" disabled>Pause</button>
+    <button class="btn" id="stop" disabled>Stop</button>
+    <button class="btn" id="reset">Reset</button>
+
+    <div class="ctl">
+      <div style="font-weight:700;">Animation speed</div>
+      <input id="speed" type="range" min="0.1" max="4" step="0.1" value="1.0">
+      <div id="speedLbl" style="width:48px;text-align:right;font-weight:700;">1.0×</div>
+    </div>
+  </div>
+
+  <div class="plotWrap">
+    <div class="plotBox">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (x, n=3) => {
+    if (!isFinite(x)) return "—";
+    const ax = Math.abs(x);
+    if (ax >= 1000) return x.toFixed(0);
+    if (ax >= 100)  return x.toFixed(1);
+    if (ax >= 10)   return x.toFixed(2);
+    return x.toFixed(n);
+  };
+
+  const defaults = {
+    W:10, k:2000, c:5, g:386.09, Gpk:10, Tp:20, dt:0.05, shape:"halfSine", speed:1.0
+  };
+
+  const inp = {
+    W: $("W"), k: $("k"), c: $("c"), g: $("g"),
+    Gpk: $("Gpk"), Tp: $("Tp"), dt: $("dt"), shape: $("shape")
+  };
+  const out = {
+    fn: $("fn"), cc: $("cc"), zeta: $("zeta"),
+    tStop: $("tStop"), gmaxB: $("gmaxB"), gmaxW: $("gmaxW")
+  };
+
+  const btnRun = $("run"), btnPause = $("pause"), btnStop = $("stop"), btnReset = $("reset");
+  const speed = $("speed"), speedLbl = $("speedLbl");
+
+  // Soft-reset target: inputs as of the last time Run was clicked
+  let lastRunInputs = null;
+
+  // Chart (base accel + weight accel)
+  const chart = new Chart($("chart").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [
+        { label: "Base Accel, a_b (g)", data: [], borderWidth: 2, pointRadius: 0, tension: 0.05, yAxisID: "yG" },
+        { label: "Weight Accel, a_w (g)", data: [], borderWidth: 2, pointRadius: 0, tension: 0.05, borderDash: [6,4], yAxisID: "yG" }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "top" } },
+      scales: {
+        x: { title: { display: true, text: "Time, sec." }, ticks: { maxTicksLimit: 10 } },
+        yG: { position: "left", title: { display: true, text: "Acceleration, g's" } }
+      }
+    }
+  });
+
+  // Shock shapes (single pulse 0..Tp)
+  function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
+  function shapeVal(s, kind){
+    s = clamp(s, 0, 1);
+    switch(kind){
+      case "halfSine":   return Math.sin(Math.PI*s);                // 0..1..0
+      case "triangular": return (s<=0.5) ? (2*s) : (2*(1-s));       // 0..1..0
+      case "rectangular":return 1;                                  // 1
+      case "sawtooth":   return (1 - s);                             // 1..0
+      default:           return Math.sin(Math.PI*s);
+    }
+  }
+  function baseAccel_g(t, Tp, Gpk, kind){
+    if (t < 0 || t > Tp) return 0;
+    return Gpk * shapeVal(t/Tp, kind);
+  }
+
+  // RK4 for state X=[z, zd, y, yd], where z=x-y
+  // m z¨ + c z˙ + k z = -m y¨, with y¨ = a_b(t)
+  function rk4Step(t, X, h, pars){
+    const {m,c,k,g,Tp,Gpk,shape} = pars;
+
+    function deriv(tt, XX){
+      const z  = XX[0];
+      const zd = XX[1];
+      const y  = XX[2];
+      const yd = XX[3];
+
+      const ab_g = baseAccel_g(tt, Tp, Gpk, shape);
+      const ab = ab_g * g;
+
+      const zdd = (-c*zd - k*z)/m - ab;
+      const ydd = ab;
+
+      return [zd, zdd, yd, ydd];
+    }
+
+    const k1 = deriv(t, X);
+    const X2 = X.map((xi,i)=>xi + 0.5*h*k1[i]);
+    const k2 = deriv(t + 0.5*h, X2);
+    const X3 = X.map((xi,i)=>xi + 0.5*h*k2[i]);
+    const k3 = deriv(t + 0.5*h, X3);
+    const X4 = X.map((xi,i)=>xi + h*k3[i]);
+    const k4 = deriv(t + h, X4);
+
+    return X.map((xi,i)=> xi + (h/6)*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]));
+  }
+
+  function simulateFromInputs(){
+    const W = +inp.W.value;
+    const k = +inp.k.value;
+    const c = +inp.c.value;
+    const g = +inp.g.value;
+
+    const Gpk = +inp.Gpk.value;                 // peak in g's
+    const Tp_ms = +inp.Tp.value;                // ms
+    const dt_ms = +inp.dt.value;                // ms
+    const shape = inp.shape.value;
+
+    if (!(W>0) || !(k>0) || !(g>0) || !(Tp_ms>0) || !(dt_ms>0)) return null;
+
+    const m = W/g;
+    const wn = Math.sqrt(k/m);
+    const fn = wn/(2*Math.PI);
+    const cc = 2*m*wn;
+    const zeta = (cc>0) ? (c/cc) : 0;
+
+    const Tp = Tp_ms/1000;
+    let dt = dt_ms/1000;
+
+    // Keep dt reasonable (but still honor user intent)
+    // - Not larger than Tp/50 (captures pulse shape)
+    // - Not larger than Tn/200 (basic time resolution)
+    const Tn = 1/Math.max(1e-12, fn);
+    dt = Math.max(1e-6, Math.min(dt, Tp/50, Tn/200));
+
+    const cycles = 20;
+    const tStop = Tp + cycles*Tn;
+    const n = Math.ceil(tStop/dt) + 1;
+
+    const t = new Array(n);
+    const z = new Array(n);
+    const zd = new Array(n);
+    const y = new Array(n);
+    const yd = new Array(n);
+    const abase = new Array(n);
+    const aweight = new Array(n);
+
+    // ICs: at rest
+    let X = [0,0,0,0];
+    let tt = 0;
+
+    let gMaxB = 0;
+    let gMaxW = 0;
+
+    for(let i=0;i<n;i++){
+      const zi  = X[0];
+      const zdi = X[1];
+      const yi  = X[2];
+      const ydi = X[3];
+
+      const ab_g = baseAccel_g(tt, Tp, Gpk, shape);
+      const ab = ab_g * g;
+      const zdd = (-c*zdi - k*zi)/m - ab;
+      const xdd = zdd + ab;
+
+      t[i]=tt;
+      z[i]=zi; zd[i]=zdi;
+      y[i]=yi; yd[i]=ydi;
+
+      abase[i]=ab_g;
+      aweight[i]=xdd/g;
+
+      gMaxB = Math.max(gMaxB, Math.abs(ab_g));
+      gMaxW = Math.max(gMaxW, Math.abs(aweight[i]));
+
+      X = rk4Step(tt, X, dt, {m,c,k,g,Tp,Gpk,shape});
+      tt += dt;
+    }
+
+    return {W,k,c,g,Gpk,Tp,dt,shape,m,wn,fn,cc,zeta,Tn,tStop,t,z,zd,y,yd,abase,aweight,gMaxB,gMaxW};
+  }
+
+  function writeSummary(sim){
+    if (!sim){
+      out.fn.textContent="—"; out.cc.textContent="—"; out.zeta.textContent="—";
+      out.tStop.textContent="—"; out.gmaxB.textContent="—"; out.gmaxW.textContent="—";
+      return;
+    }
+    out.fn.innerHTML   = fmt(sim.fn,3) + " Hz";
+    out.cc.textContent = fmt(sim.cc,3);
+    out.zeta.innerHTML = fmt(sim.zeta*100,1) + " %";
+    out.tStop.textContent = fmt(sim.tStop,3) + " s";
+    out.gmaxB.innerHTML = fmt(sim.gMaxB,2) + " g";
+    out.gmaxW.innerHTML = fmt(sim.gMaxW,2) + " g";
+  }
+
+  // Schematic
+  const canv = $("schem");
+  const ctx = canv.getContext("2d");
+
+  function roundRect(x,y,w,h,r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  function drawSpring(x, yTop, yBot){
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 2;
+    const turns = 8, amp = 14;
+    const dy = yBot - yTop;
+    const seg = dy / (turns*2);
+    ctx.beginPath();
+    ctx.moveTo(x, yTop);
+    let xx=x, yy=yTop;
+    for (let i=0; i<turns*2; i++){
+      yy += seg;
+      xx = x + (i%2===0 ? -amp : amp);
+      ctx.lineTo(xx, yy);
+    }
+    ctx.lineTo(x, yBot);
+    ctx.stroke();
+  }
+  function drawDamper(x, yTop, yBot){
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 2;
+    const mid = (yTop + yBot)/2;
+    ctx.beginPath(); ctx.moveTo(x,yTop); ctx.lineTo(x, mid-28); ctx.stroke();
+    ctx.beginPath(); ctx.rect(x-18, mid-28, 36, 22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, mid-6); ctx.lineTo(x, yBot); ctx.stroke();
+  }
+
+  const SCENE_TOP_SHIFT = 36;
+
+  function drawSchematic(sim, tNow, yNow, zNow){
+    const w = canv.width, h = canv.height;
+
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#d9d9d9";
+    ctx.fillRect(0,0,w,h);
+
+    ctx.save();
+    ctx.translate(0, SCENE_TOP_SHIFT);
+
+    // Layout
+    const groundY = Math.round(h*0.82);
+    const xMid = Math.round(w*0.70);
+
+    // Visual scaling (purely for animation clarity)
+    // Base motion y is typically small for short shocks; scale to use available height.
+    let yScale = 1;
+    let zScale = 1;
+    if (sim){
+      const ySpan = Math.max(1e-9, ...sim.y.map(v=>Math.abs(v)));
+      const zSpan = Math.max(1e-9, ...sim.z.map(v=>Math.abs(v)));
+      yScale = (0.10*h)/ySpan;   // base smaller
+      zScale = (0.22*h)/zSpan;   // relative larger
+    }
+
+    const baseY0 = Math.round(h*0.62);
+    const baseY = baseY0 + (sim ? yNow*yScale : 0);
+
+    // Ground line (fixed)
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(w*0.45), groundY);
+    ctx.lineTo(Math.round(w*0.92), groundY);
+    ctx.stroke();
+
+    // Base block (large mass)
+    const baseW = 190, baseH = 64;
+    const xBase = xMid - baseW/2;
+    ctx.fillStyle = "#b9c7df";
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 3;
+    roundRect(xBase, baseY, baseW, baseH, 14);
+
+    // Spring + damper above base
+    const yAttachBase = baseY - 4;
+    const yAttachMass0 = Math.round(h*0.30);
+    const massY = yAttachMass0 + (sim ? (yNow + zNow)*zScale : 0); // x ≈ y+z (visual)
+    const yAttachMass = massY + 70 + 4;
+
+    const xDamper = Math.round(xMid - 35);
+    const xSpring = Math.round(xMid + 35);
+    drawDamper(xDamper, yAttachMass, yAttachBase);
+    drawSpring(xSpring, yAttachMass, yAttachBase);
+
+    // Suspended mass block
+    const bw = 150, bh = 70;
+    const xMass = xMid - bw/2;
+    const yMassTop = Math.round(massY);
+
+    ctx.fillStyle = "#cfd5dd";
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 3;
+    roundRect(xMass, yMassTop, bw, bh, 16);
+
+    // Small text tags
+    ctx.fillStyle = "#111827";
+    ctx.font = "700 14px Arial, Helvetica, sans-serif";
+    ctx.fillText("W", xMass + 10, yMassTop + 22);
+    ctx.font = "700 12px Arial, Helvetica, sans-serif";
+    ctx.fillText("base", xBase + 10, baseY + 22);
+
+    // Time readout
+    ctx.font = "700 12px Arial, Helvetica, sans-serif";
+    ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.46), Math.round(h*0.10));
+
+    ctx.restore();
+  }
+
+  // Live recompute (debounced)
+  let simReady = null;
+  let debounceTimer = null;
+
+  function recomputeLive(){
+    simReady = simulateFromInputs();
+    writeSummary(simReady);
+
+    // Pre-run schematic: t=0, y=0, z=0
+    drawSchematic(simReady, 0, 0, 0);
+  }
+
+  function requestRecompute(){
+    if (anim.running) return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(recomputeLive, 120);
+  }
+
+  Object.values(inp).forEach(el => {
+    el.addEventListener("input", requestRecompute);
+    el.addEventListener("change", requestRecompute);
+  });
+
+  // Animation controls
+  function setButtons(running, paused){
+    btnRun.disabled = running && !paused;
+    btnPause.disabled = !running;
+    btnStop.disabled = !running;
+    btnPause.textContent = paused ? "Resume" : "Pause";
+  }
+
+  let anim = { running:false, paused:false, idx:0, t0:0 };
+  let raf = null;
+
+  function updateChartTo(idx){
+    chart.data.labels = simReady.t.slice(0, idx+1).map(x => x.toFixed(4));
+    chart.data.datasets[0].data = simReady.abase.slice(0, idx+1);
+    chart.data.datasets[1].data = simReady.aweight.slice(0, idx+1);
+    chart.update();
+  }
+
+  function start(){
+    // Commit current inputs as the "last run" state (used by Reset)
+    lastRunInputs = {
+      W:+inp.W.value, k:+inp.k.value, c:+inp.c.value, g:+inp.g.value,
+      Gpk:+inp.Gpk.value, Tp:+inp.Tp.value, dt:+inp.dt.value, shape:inp.shape.value
+    };
+
+    if (!simReady){
+      recomputeLive();
+      if (!simReady) return;
+    }
+
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.data.datasets[1].data = [];
+    chart.update();
+
+    anim.running = true;
+    anim.paused = false;
+    anim.idx = 0;
+    anim.t0 = performance.now();
+    setButtons(true,false);
+
+    const step = () => {
+      if (!anim.running) return;
+
+      const spd = +speed.value;
+      const now = performance.now();
+
+      if (!anim.paused){
+        const dtSec = ((now - anim.t0)/1000) * spd;
+        anim.t0 = now;
+
+        const tTarget = simReady.t[anim.idx] + dtSec;
+        while (anim.idx < simReady.t.length-1 && simReady.t[anim.idx] < tTarget){
+          anim.idx++;
+        }
+
+        if (anim.idx >= simReady.t.length-1){
+          anim.idx = simReady.t.length-1;
+          updateChartTo(anim.idx);
+          drawSchematic(simReady, simReady.t[anim.idx], simReady.y[anim.idx], simReady.z[anim.idx]);
+          stop();
+          return;
+        }
+      } else {
+        anim.t0 = now;
+      }
+
+      updateChartTo(anim.idx);
+      drawSchematic(simReady, simReady.t[anim.idx], simReady.y[anim.idx], simReady.z[anim.idx]);
+
+      raf = requestAnimationFrame(step);
+    };
+
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(step);
+  }
+
+  function stop(){
+    anim.running = false;
+    anim.paused = false;
+    setButtons(false,false);
+    cancelAnimationFrame(raf);
+    raf = null;
+
+    if (simReady){
+      updateChartTo(simReady.t.length-1);
+      drawSchematic(simReady, simReady.t.at(-1), simReady.y.at(-1), simReady.z.at(-1));
+    }
+  }
+
+  function hardReset(){
+    anim.running = false;
+    anim.paused = false;
+    setButtons(false,false);
+    cancelAnimationFrame(raf);
+    raf = null;
+
+    const src = lastRunInputs || defaults;
+
+    inp.W.value = src.W;
+    inp.k.value = src.k;
+    inp.c.value = src.c;
+    inp.g.value = src.g;
+    inp.Gpk.value = src.Gpk;
+    inp.Tp.value = src.Tp;
+    inp.dt.value = src.dt;
+    inp.shape.value = src.shape;
+
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.data.datasets[1].data = [];
+    chart.update();
+
+    recomputeLive();
+  }
+
+  btnRun.addEventListener("click", start);
+  btnPause.addEventListener("click", () => {
+    if (!anim.running) return;
+    anim.paused = !anim.paused;
+    setButtons(true, anim.paused);
+  });
+  btnStop.addEventListener("click", stop);
+  btnReset.addEventListener("click", hardReset);
+
+  speed.addEventListener("input", () => speedLbl.textContent = (+speed.value).toFixed(1) + "×");
+
+  // initial
+  speedLbl.textContent = (+speed.value).toFixed(1) + "×";
+  recomputeLive();
+})();
+</script>
+</body>
+</html>
