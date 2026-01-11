@@ -182,6 +182,33 @@
     line-height:1.25;
   }
 
+/* PSD charts appear to the right of the table area */
+.psdCharts{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+
+.psdChartBox{
+  border:1px solid #333;
+  background:#fff;
+  padding:6px;
+}
+
+.psdChartTitle{
+  font-size:12px;
+  font-weight:700;
+  margin:0 0 6px 0;
+}
+
+#psdChart, #randChart{
+  width:100%;
+  height:160px;
+}
+
+
+
   @media (max-width: 860px){
     .upper{ grid-template-columns: 1fr; }
     canvas#schem{ width: 360px; height: 240px; }
@@ -264,7 +291,25 @@
 
           <div class="psdNote" id="psdStatus">Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.</div>
         </div>
-      </div>
+      
+<div class="psdBtnRow">
+  <button class="btn" id="buildRandom">Build Random g(t)</button>
+  <div class="psdNote" id="psdStatus">...</div>
+</div>
+
+<div class="psdCharts" id="psdCharts" style="display:none;">
+  <div class="psdChartBox">
+    <div class="psdChartTitle">PSD (g²/Hz)</div>
+    <canvas id="psdChart"></canvas>
+  </div>
+  <div class="psdChartBox">
+    <div class="psdChartTitle">Random base accel, g(t)</div>
+    <canvas id="randChart"></canvas>
+  </div>
+</div>
+
+
+</div>
     </div>
 
     <!-- Summary -->
@@ -353,6 +398,11 @@ const out = {
   const psdPanel = $("psdPanel");
   const buildRandomBtn = $("buildRandom");
   const psdStatus = $("psdStatus");
+
+const psdChartsWrap = $("psdCharts");
+let psdChartObj = null;
+let randChartObj = null;
+
 
   const btnRun = $("run"), btnPause = $("pause"), btnStop = $("stop"), btnReset = $("reset");
   const speed = $("speed"), speedLbl = $("speedLbl");
@@ -804,11 +854,113 @@ function readPSDPoints(){
   let debounceTimer = null;
 
 
+
+function destroyRandomCharts(){
+  if (psdChartObj){ psdChartObj.destroy(); psdChartObj = null; }
+  if (randChartObj){ randChartObj.destroy(); randChartObj = null; }
+  if (psdChartsWrap) psdChartsWrap.style.display = "none";
+}
+
+function makePSDSeriesFromPoints(pts){
+  // For plotting the PSD curve as straight segments through the user points
+  return {
+    f: pts.map(p => p.f),
+    s: pts.map(p => p.s)
+  };
+}
+
+function renderRandomCharts(){
+  // Build PSD curve from the entered points (not the discretized bins)
+  const chk = readPSDPoints();
+  if (!chk.ok) return; // should not happen if Build succeeded
+  const pts = chk.pts;
+
+  const psdCtx = $("psdChart").getContext("2d");
+  const rndCtx = $("randChart").getContext("2d");
+
+  // Ensure old charts are removed
+  destroyRandomCharts();
+
+  // Show wrapper
+  psdChartsWrap.style.display = "grid";
+
+  // PSD chart
+  const psdSeries = makePSDSeriesFromPoints(pts);
+  psdChartObj = new Chart(psdCtx, {
+    type: "line",
+    data: {
+      labels: psdSeries.f.map(v => String(v)),
+      datasets: [{
+        label: "PSD (g²/Hz)",
+        data: psdSeries.s,
+        borderWidth: 2,
+        pointRadius: 2,
+        tension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { title: { display:true, text:"Frequency (Hz)" } },
+        y: { title: { display:true, text:"g²/Hz" } }
+      }
+    }
+  });
+
+  // Random time history chart (downsample for speed if very long)
+  const t = randomInput.t;
+  const a = randomInput.abase;
+  const maxPts = 2500;
+  const step = Math.max(1, Math.floor(t.length / maxPts));
+
+  const tPlot = [];
+  const aPlot = [];
+  for (let i=0; i<t.length; i+=step){
+    tPlot.push(t[i]);
+    aPlot.push(a[i]);
+  }
+
+  randChartObj = new Chart(rndCtx, {
+    type: "line",
+    data: {
+      labels: tPlot.map(v => v.toFixed(4)),
+      datasets: [{
+        label: "a_b(t) (g)",
+        data: aPlot,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { title: { display:true, text:"Time (s)" }, ticks: { maxTicksLimit: 6 } },
+        y: { title: { display:true, text:"g" } }
+      }
+    }
+  });
+}
+
+
+
+
+
 function updateRandomUI(){
   const isRand = (inp.shape.value === "random");
 
   psdPanel.style.display = isRand ? "block" : "none";
   buildRandomBtn.disabled = !isRand;
+
+  if (!isRand){
+    destroyRandomCharts();   // <-- remove the two plots when Random goes away
+  }
 
   psdStatus.textContent = !isRand
     ? "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input."
@@ -816,7 +968,6 @@ function updateRandomUI(){
         ? "Random input is built and armed. Click Run to simulate using this base acceleration."
         : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.");
 }
-
 
 
 
@@ -890,6 +1041,10 @@ console.log("BuildRandom:", res);
       gMaxB: res.gMaxB,
       meta: res.meta
     };
+
+
+renderRandomCharts();
+
 
     // Preview g(t) on chart (base only)
     chart.data.labels = randomInput.t.map(x => x.toFixed(4));
@@ -1044,6 +1199,7 @@ console.log("BuildRandom:", res);
 </script>
 </body>
 </html>
+
 
 
 
