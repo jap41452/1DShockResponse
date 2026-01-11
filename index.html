@@ -450,29 +450,39 @@ const out = {
   }
 
   // ---------- Random PSD utilities ----------
-  function readPSDPoints(){
-    const rows = [
-      {f:+$("f1").value, s:+$("s1").value},
-      {f:+$("f2").value, s:+$("s2").value},
-      {f:+$("f3").value, s:+$("s3").value},
-      {f:+$("f4").value, s:+$("s4").value},
-      {f:+$("f5").value, s:+$("s5").value}
-    ];
 
-    // keep rows that have both f and s finite
-    const pts = rows.filter(r => isFinite(r.f) && isFinite(r.s));
+function readPSDPoints(){
+  const readNum = (id) => {
+    const s = ($(id).value || "").trim();
+    if (s === "") return NaN;          // <-- critical: blank stays blank
+    const v = parseFloat(s);
+    return Number.isFinite(v) ? v : NaN;
+  };
 
-    // must have at least 2 points
-    if (pts.length < 2) return {ok:false, msg:"Enter at least 2 PSD points."};
+  const rows = [
+    { f: readNum("f1"), s: readNum("s1") },
+    { f: readNum("f2"), s: readNum("s2") },
+    { f: readNum("f3"), s: readNum("s3") },
+    { f: readNum("f4"), s: readNum("s4") },
+    { f: readNum("f5"), s: readNum("s5") }
+  ];
 
-    // validate positivity and increasing frequency
-    for (let i=0;i<pts.length;i++){
-      if (!(pts[i].f > 0)) return {ok:false, msg:"Frequencies must be > 0."};
-      if (!(pts[i].s >= 0)) return {ok:false, msg:"PSD values must be ≥ 0."};
-      if (i>0 && !(pts[i].f > pts[i-1].f)) return {ok:false, msg:"Frequencies must be strictly increasing."};
-    }
-    return {ok:true, pts};
+  // keep rows that have both f and s finite
+  const pts = rows.filter(r => Number.isFinite(r.f) && Number.isFinite(r.s));
+
+  if (pts.length < 2) return { ok:false, msg:"Enter at least 2 PSD points." };
+
+  for (let i=0; i<pts.length; i++){
+    if (!(pts[i].f > 0)) return { ok:false, msg:"Frequencies must be > 0." };
+    if (!(pts[i].s >= 0)) return { ok:false, msg:"PSD values must be ≥ 0." };
+    if (i>0 && !(pts[i].f > pts[i-1].f)) return { ok:false, msg:"Frequencies must be strictly increasing." };
   }
+
+  return { ok:true, pts };
+}
+
+
+
 
   function interpPSD(f, pts){
     // piecewise linear; clamp outside range to end values
@@ -861,12 +871,16 @@ inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(
     }
 
     const res = buildRandomTimeHistory(kpi);
-    if (!res.ok){
+console.log("BuildRandom:", res);   
+
+ if (!res.ok){
       psdStatus.textContent = res.msg;
       randomInput = null;
       recomputeLive();
       return;
     }
+
+
 
     randomInput = {
       t: res.t,
@@ -1030,6 +1044,7 @@ inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(
 </script>
 </body>
 </html>
+
 
 
 
