@@ -183,44 +183,54 @@
   }
 
 /* Random PSD panel: 2-column layout */
+/* Random PSD panel: 2-column layout */
 .psdGrid{
   display:grid;
-  grid-template-columns: 1fr 1.35fr; /* left table, right charts */
+  grid-template-columns: 320px 1fr;   /* left table fixed, right charts get the space */
   gap:12px;
   align-items:start;
 }
 
-.psdLeft{ min-width: 260px; }
+.psdLeft{ min-width: 0; }
 
 .psdRight{
-  display:grid;                 /* two charts side-by-side */
-  grid-template-columns: 1fr 1fr;
+  display:grid;
+  grid-template-columns: 1fr 1fr;     /* two plots side-by-side */
   gap:10px;
+  align-items:stretch;
 }
 
+/* IMPORTANT: Chart.js needs the parent to have a real height */
 .psdChartBox{
   border:1px solid #333;
   background:#fff;
   padding:6px;
-}
+  height:220px;
+  box-sizing:border-box;
+  overflow:hidden;
 
+  display:flex;
+  flex-direction:column;
+}
 .psdChartTitle{
   font-size:12px;
   font-weight:700;
   margin:0 0 6px 0;
 }
 
+/* IMPORTANT: force canvas to fill the box */
 #psdChart, #randChart{
-  width:100%;
-  height:170px;
+  display:block;
+  width:100% !important;
+  flex: 1 1 auto;
+  height: auto !important;
 }
-
 /* Responsive: stack charts under table on small screens */
 @media (max-width: 860px){
   .psdGrid{ grid-template-columns: 1fr; }
   .psdRight{ grid-template-columns: 1fr; }
+  .psdChartBox{ height: 220px; }
 }
-
 
 
 </style>
@@ -275,6 +285,12 @@
         pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
       </div>
 
+
+
+
+
+
+
 <!-- Random PSD panel -->
 <div class="psdPanel" id="psdPanel">
   <div class="psdGrid">
@@ -316,28 +332,25 @@
         <div class="psdChartTitle">Random base accel, g(t)</div>
         <canvas id="randChart"></canvas>
       </div>
-    </div>
-  </div>
 </div>  
+</div>  
+</div>   <!-- end psdPanel -->
 
+</div>   <!-- IMPORTANT: closes the Inputs column -->
+
+<!-- Summary -->
+<div>
+  ...
+</div>
+
+<!-- Schematic -->
+<div class="schem">
+  ...
+</div>
 
 
       
 
-<div class="psdCharts" id="psdCharts" style="display:none;">
-  <div class="psdChartBox">
-    <div class="psdChartTitle">PSD (g²/Hz)</div>
-    <canvas id="psdChart"></canvas>
-  </div>
-  <div class="psdChartBox">
-    <div class="psdChartTitle">Random base accel, g(t)</div>
-    <canvas id="randChart"></canvas>
-  </div>
-</div>
-
-
-</div>
-    </div>
 
     <!-- Summary -->
     <div>
@@ -902,8 +915,15 @@ function renderRandomCharts(){
   if (!chk.ok) return; // should not happen if Build succeeded
   const pts = chk.pts;
 
-  const psdCtx = $("psdChart").getContext("2d");
-  const rndCtx = $("randChart").getContext("2d");
+  const c1 = $("psdChart");
+  const c2 = $("randChart");
+  if (!c1 || !c2) return;
+
+  const psdCtx = c1.getContext("2d");
+  const rndCtx = c2.getContext("2d");
+
+
+
 
   // Ensure old charts are removed
   destroyRandomCharts();
@@ -1226,6 +1246,7 @@ renderRandomCharts();
 </script>
 </body>
 </html>
+
 
 
 
