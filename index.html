@@ -340,7 +340,13 @@
     W: $("W"), k: $("k"), c: $("c"), g: $("g"),
     Gpk: $("Gpk"), Tp: $("Tp"), dt: $("dt"), shape: $("shape")
   };
-  const out = {
+  
+inp.shape.addEventListener("input", () => { updateRandomUI(); requestRecompute(); });
+inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(); });
+
+
+
+const out = {
     fn: $("fn"), cc: $("cc"), zeta: $("zeta"),
     tStop: $("tStop"), gmaxB: $("gmaxB"), gmaxW: $("gmaxW")
   };
@@ -788,21 +794,31 @@
   let simReady = null;
   let debounceTimer = null;
 
-  function updateRandomUI(){
-    const isRand = (inp.shape.value === "random");
-    psdPanel.style.display = isRand ? "block" : "none";
-    buildRandomBtn.disabled = !isRand;
 
-    // if switching away from Random, keep randomInput cached (so switching back keeps it armed),
-    // but do not use it unless shape==random.
-    if (!isRand){
-      psdStatus.textContent = "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
-    } else {
-      psdStatus.textContent = randomInput
-        ? "Random input is built and armed. Click Run to simulate using this base acceleration."
-        : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
-    }
+function updateRandomUI(){
+  const isRand = (inp.shape.value === "random");
+
+  psdPanel.style.display = isRand ? "block" : "none";
+
+  // Force-enable/disable reliably (covers cases where setting .disabled doesn't repaint)
+  if (isRand){
+    buildRandomBtn.disabled = false;
+    buildRandomBtn.removeAttribute("disabled");
+  } else {
+    buildRandomBtn.disabled = true;
+    buildRandomBtn.setAttribute("disabled", "disabled");
   }
+
+  if (!isRand){
+    psdStatus.textContent =
+      "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
+  } else {
+    psdStatus.textContent = randomInput
+      ? "Random input is built and armed. Click Run to simulate using this base acceleration."
+      : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
+  }
+}
+
 
   function recomputeLive(){
     // Do not compute full sim here; just update summary KPIs and initial schematic.
@@ -1020,5 +1036,6 @@
 </script>
 </body>
 </html>
+
 
 
