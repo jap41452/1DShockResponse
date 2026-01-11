@@ -33,7 +33,6 @@
   }
   .topbar .r{ text-align:center; }
 
-  /* CHANGED: allocate more room to schematic; tighten gap */
   .upper{
     display:grid;
     grid-template-columns: 260px 250px 1fr;
@@ -85,8 +84,6 @@
     justify-content:center;
     align-items:flex-start;
   }
-
-  /* CHANGED: enlarge schematic display size */
   canvas#schem{
     width: 340px;
     height: 220px;
@@ -132,14 +129,58 @@
   }
   #chart{ width:100%; height:290px; }
 
-.hint{
-  padding: 0 10px 8px;
-  font-size:11px;
-  opacity:.8;
-  margin-top: 12px;   /* ADD THIS */
-  line-height: 1.25;  /* optional, improves readability */
-}
+  .hint{
+    padding: 0 10px 8px;
+    font-size:11px;
+    opacity:.8;
+    margin-top:12px;
+    line-height:1.25;
+  }
 
+  /* PSD panel shown only for Random */
+  .psdPanel{
+    display:none;
+    margin-top:10px;
+    padding:8px;
+    border:1px solid #333;
+    background:#efefef;
+  }
+  .psdTitle{
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .psdTbl{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+  .psdTbl th, .psdTbl td{
+    border:1px solid #333;
+    padding:3px 4px;
+    background:#fff;
+  }
+  .psdTbl th{
+    background:#dedede;
+    font-weight:700;
+    text-align:center;
+  }
+  .psdTbl input{
+    height:20px;
+    font-size:12px;
+    border:1px solid #333;
+  }
+  .psdBtnRow{
+    display:flex;
+    gap:8px;
+    margin-top:8px;
+    align-items:center;
+  }
+  .psdNote{
+    font-size:11px;
+    opacity:.85;
+    line-height:1.25;
+  }
 
   @media (max-width: 860px){
     .upper{ grid-template-columns: 1fr; }
@@ -188,13 +229,40 @@
             <option value="triangular">triangular</option>
             <option value="rectangular">rectangular</option>
             <option value="sawtooth">sawtooth</option>
+            <option value="random">Random</option>
           </select>
         </div>
       </div>
 
       <div class="hint">
         Inputs: W, k, c, gravitational constant g, peak shock level G<sub>pk</sub> in g’s,
-        pulse duration T<sub>p</sub> in ms, integration step &#916;t in ms.
+        pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
+      </div>
+
+      <!-- Random PSD panel -->
+      <div class="psdPanel" id="psdPanel">
+        <div class="psdTitle">Random input PSD (up to 5 points)</div>
+        <table class="psdTbl">
+          <thead>
+            <tr>
+              <th style="width:50%">Frequency (Hz)</th>
+              <th style="width:50%">PSD (g²/Hz)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 5 rows -->
+            <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
+            <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
+            <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
+            <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
+            <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
+          </tbody>
+        </table>
+
+        <div class="psdBtnRow">
+          <button class="btn" id="buildRandom" disabled>Build Random g(t)</button>
+          <div class="psdNote" id="psdStatus">Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.</div>
+        </div>
       </div>
     </div>
 
@@ -221,7 +289,7 @@
       </div>
 
       <div class="hint">
-        Derived live from inputs. Auto-stop: shock pulse + 20 response cycles.
+        Derived live from inputs. Auto-stop: pulse + 20 response cycles (or Random duration = 20 response cycles).
       </div>
     </div>
 
@@ -262,6 +330,7 @@
     if (ax >= 10)   return x.toFixed(2);
     return x.toFixed(n);
   };
+  const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
 
   const defaults = {
     W:10, k:2000, c:5, g:386.09, Gpk:10, Tp:20, dt:0.05, shape:"halfSine", speed:1.0
@@ -276,12 +345,19 @@
     tStop: $("tStop"), gmaxB: $("gmaxB"), gmaxW: $("gmaxW")
   };
 
+  const psdPanel = $("psdPanel");
+  const buildRandomBtn = $("buildRandom");
+  const psdStatus = $("psdStatus");
+
   const btnRun = $("run"), btnPause = $("pause"), btnStop = $("stop"), btnReset = $("reset");
   const speed = $("speed"), speedLbl = $("speedLbl");
 
   let lastRunInputs = null;
 
-  // Chart (base accel + weight accel)
+  // Random input cache: generated base acceleration history (g) aligned to dt & tStop
+  let randomInput = null; // {t:[], abase:[], dt, tStop, gMaxB, meta:{fmin,fmax,nbins}}
+
+  // Chart
   const chart = new Chart($("chart").getContext("2d"), {
     type: "line",
     data: {
@@ -304,20 +380,18 @@
     }
   });
 
-  function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
-
-  // Shock shapes (single pulse 0..Tp)
+  // Shock shapes (single pulse 0..Tp), used for non-random
   function shapeVal(s, kind){
     s = clamp(s, 0, 1);
     switch(kind){
-      case "halfSine":   return Math.sin(Math.PI*s);                // 0..1..0
-      case "triangular": return (s<=0.5) ? (2*s) : (2*(1-s));       // 0..1..0
-      case "rectangular":return 1;                                  // 1
-      case "sawtooth":   return (1 - s);                             // 1..0
+      case "halfSine":   return Math.sin(Math.PI*s);
+      case "triangular": return (s<=0.5) ? (2*s) : (2*(1-s));
+      case "rectangular":return 1;
+      case "sawtooth":   return (1 - s);
       default:           return Math.sin(Math.PI*s);
     }
   }
-  function baseAccel_g(t, Tp, Gpk, kind){
+  function baseAccelPulse_g(t, Tp, Gpk, kind){
     if (t < 0 || t > Tp) return 0;
     return Gpk * shapeVal(t/Tp, kind);
   }
@@ -325,7 +399,7 @@
   // RK4 for state X=[z, zd, y, yd], where z=x-y
   // m z¨ + c z˙ + k z = -m y¨, with y¨ = a_b(t)
   function rk4Step(t, X, h, pars){
-    const {m,c,k,g,Tp,Gpk,shape} = pars;
+    const {m,c,k,g, abase_g_func} = pars;
 
     function deriv(tt, XX){
       const z  = XX[0];
@@ -333,7 +407,7 @@
       const y  = XX[2];
       const yd = XX[3];
 
-      const ab_g = baseAccel_g(tt, Tp, Gpk, shape);
+      const ab_g = abase_g_func(tt);
       const ab = ab_g * g;
 
       const zdd = (-c*zd - k*z)/m - ab;
@@ -353,34 +427,177 @@
     return X.map((xi,i)=> xi + (h/6)*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]));
   }
 
-  function simulateFromInputs(){
+  function computeKPI(){
     const W = +inp.W.value;
     const k = +inp.k.value;
     const c = +inp.c.value;
     const g = +inp.g.value;
-
-    const Gpk = +inp.Gpk.value;                 // peak in g's
-    const Tp_ms = +inp.Tp.value;                // ms
-    const dt_ms = +inp.dt.value;                // ms
-    const shape = inp.shape.value;
-
-    if (!(W>0) || !(k>0) || !(g>0) || !(Tp_ms>0) || !(dt_ms>0)) return null;
+    if (!(W>0) || !(k>0) || !(g>0)) return null;
 
     const m = W/g;
     const wn = Math.sqrt(k/m);
     const fn = wn/(2*Math.PI);
     const cc = 2*m*wn;
     const zeta = (cc>0) ? (c/cc) : 0;
-
-    const Tp = Tp_ms/1000;
-    let dt = dt_ms/1000;
-
-    // Limit dt to resolve both pulse and response
     const Tn = 1/Math.max(1e-12, fn);
-    dt = Math.max(1e-6, Math.min(dt, Tp/60, Tn/240));
+
+    return {W,k,c,g,m,wn,fn,cc,zeta,Tn};
+  }
+
+  // ---------- Random PSD utilities ----------
+  function readPSDPoints(){
+    const rows = [
+      {f:+$("f1").value, s:+$("s1").value},
+      {f:+$("f2").value, s:+$("s2").value},
+      {f:+$("f3").value, s:+$("s3").value},
+      {f:+$("f4").value, s:+$("s4").value},
+      {f:+$("f5").value, s:+$("s5").value}
+    ];
+
+    // keep rows that have both f and s finite
+    const pts = rows.filter(r => isFinite(r.f) && isFinite(r.s));
+
+    // must have at least 2 points
+    if (pts.length < 2) return {ok:false, msg:"Enter at least 2 PSD points."};
+
+    // validate positivity and increasing frequency
+    for (let i=0;i<pts.length;i++){
+      if (!(pts[i].f > 0)) return {ok:false, msg:"Frequencies must be > 0."};
+      if (!(pts[i].s >= 0)) return {ok:false, msg:"PSD values must be ≥ 0."};
+      if (i>0 && !(pts[i].f > pts[i-1].f)) return {ok:false, msg:"Frequencies must be strictly increasing."};
+    }
+    return {ok:true, pts};
+  }
+
+  function interpPSD(f, pts){
+    // piecewise linear; clamp outside range to end values
+    if (f <= pts[0].f) return pts[0].s;
+    if (f >= pts[pts.length-1].f) return pts[pts.length-1].s;
+    for (let i=0;i<pts.length-1;i++){
+      const f1 = pts[i].f, f2 = pts[i+1].f;
+      if (f >= f1 && f <= f2){
+        const s1 = pts[i].s, s2 = pts[i+1].s;
+        const a = (f - f1)/(f2 - f1);
+        return s1 + a*(s2 - s1);
+      }
+    }
+    return 0;
+  }
+
+  function buildRandomTimeHistory(kpi){
+    // Build base accel history a_b(t) in g from PSD via random-phase sum-of-sinusoids.
+    // PSD is in g^2/Hz, frequency in Hz.
+    const chk = readPSDPoints();
+    if (!chk.ok) return {ok:false, msg:chk.msg};
+    const pts = chk.pts;
+
+    const dt_ms = +inp.dt.value;
+    if (!(dt_ms>0)) return {ok:false, msg:"Δt must be > 0."};
+
+    // Use same stop rule: 20 response cycles
+    const cycles = 20;
+    const tStop = cycles * kpi.Tn;
+
+    // enforce a dt that resolves the highest PSD frequency reasonably, and the response
+    let dt = dt_ms/1000;
+    const fmax = pts[pts.length-1].f;
+    // Nyquist: dt <= 1/(2*fmax). For synthesis quality, use ~10–15 points/cycle at fmax.
+    const dtNy = 1/(2*fmax + 1e-12);
+    const dtQual = 1/(12*fmax + 1e-12);
+    dt = Math.min(dt, dtNy, dtQual, kpi.Tn/240);
+    dt = Math.max(dt, 1e-6);
+
+    const n = Math.ceil(tStop/dt) + 1;
+    const t = new Array(n);
+
+    // Discretize frequency axis into bins and sum
+    const nbins = 256;
+    const fmin = pts[0].f;
+    const fspan = Math.max(1e-9, (fmax - fmin));
+    const df = fspan/(nbins-1);
+
+    // precompute bin freqs, amplitudes, phases
+    const freqs = new Array(nbins);
+    const amps  = new Array(nbins);
+    const phs   = new Array(nbins);
+
+    for (let i=0;i<nbins;i++){
+      const fi = fmin + i*df;
+      const Si = Math.max(0, interpPSD(fi, pts)); // g^2/Hz
+      // amplitude per bin for one-sided PSD approximation:
+      // a(t) = Σ sqrt(2*S(fi)*df) cos(2π fi t + φi)
+      freqs[i] = fi;
+      amps[i]  = Math.sqrt(2*Si*df);
+      phs[i]   = 2*Math.PI*Math.random();
+    }
+
+    const abase = new Array(n);
+    let gMaxB = 0;
+
+    for (let k=0;k<n;k++){
+      const tt = k*dt;
+      t[k] = tt;
+      let val = 0;
+      for (let i=0;i<nbins;i++){
+        val += amps[i]*Math.cos(2*Math.PI*freqs[i]*tt + phs[i]);
+      }
+      abase[k] = val; // g
+      gMaxB = Math.max(gMaxB, Math.abs(val));
+    }
+
+    return {ok:true, t, abase, dt, tStop, gMaxB, meta:{fmin,fmax,nbins,df}};
+  }
+
+  function abaseFromRandom(tt){
+    if (!randomInput) return 0;
+    const dt = randomInput.dt;
+    const a = randomInput.abase;
+    const n = a.length;
+    if (tt <= 0) return a[0];
+    const idx = tt/dt;
+    const i0 = Math.floor(idx);
+    if (i0 >= n-1) return a[n-1];
+    const f = idx - i0;
+    return a[i0]*(1-f) + a[i0+1]*f;
+  }
+
+  // ---------- Simulation ----------
+  function simulateFromInputs(){
+    const kpi = computeKPI();
+    if (!kpi) return null;
+
+    const {W,k,c,g,m,fn,cc,zeta,Tn} = kpi;
+
+    const shape = inp.shape.value;
+    const Gpk = +inp.Gpk.value;
+    const Tp_ms = +inp.Tp.value;
+    const dt_ms = +inp.dt.value;
+
+    if (!(dt_ms>0)) return null;
 
     const cycles = 20;
-    const tStop = Tp + cycles*Tn;
+    let tStop = 0;
+    let dt = dt_ms/1000;
+
+    let abase_g_func = null;
+
+    if (shape === "random"){
+      if (!randomInput){
+        return {__needsRandom:true, kpi}; // signal caller
+      }
+      // Force simulation time grid to align with generated random input dt for consistency
+      dt = randomInput.dt;
+      tStop = randomInput.tStop;
+      abase_g_func = abaseFromRandom;
+    } else {
+      const Tp = (Tp_ms>0) ? (Tp_ms/1000) : 0.02;
+      // Limit dt to resolve both pulse and response
+      dt = Math.max(1e-6, Math.min(dt, Tp/60, Tn/240));
+      tStop = Tp + cycles*Tn;
+
+      abase_g_func = (tt)=>baseAccelPulse_g(tt, Tp, Gpk, shape);
+    }
+
     const n = Math.ceil(tStop/dt) + 1;
 
     const t = new Array(n);
@@ -402,8 +619,9 @@
       const zi  = X[0];
       const zdi = X[1];
 
-      const ab_g = baseAccel_g(tt, Tp, Gpk, shape);
+      const ab_g = abase_g_func(tt);
       const ab = ab_g * g;
+
       const zdd = (-c*zdi - k*zi)/m - ab;
       const xdd = zdd + ab;
 
@@ -417,19 +635,30 @@
       gMaxB = Math.max(gMaxB, Math.abs(ab_g));
       gMaxW = Math.max(gMaxW, Math.abs(aweight[i]));
 
-      X = rk4Step(tt, X, dt, {m,c,k,g,Tp,Gpk,shape});
+      X = rk4Step(tt, X, dt, {m,c,k,g, abase_g_func});
       tt += dt;
     }
 
-    return {W,k,c,g,Gpk,Tp,dt,shape,m,wn,fn,cc,zeta,Tn,tStop,t,z,zd,y,yd,abase,aweight,gMaxB,gMaxW};
+    return {W,k,c,g,Gpk, Tp_ms, dt, shape, m, fn, cc, zeta, Tn, tStop, t,z,zd,y,yd, abase, aweight, gMaxB, gMaxW};
   }
 
   function writeSummary(sim){
-    if (!sim){
-      out.fn.textContent="—"; out.cc.textContent="—"; out.zeta.textContent="—";
-      out.tStop.textContent="—"; out.gmaxB.textContent="—"; out.gmaxW.textContent="—";
+    if (!sim || sim.__needsRandom){
+      const kpi = sim && sim.kpi ? sim.kpi : computeKPI();
+      if (!kpi){
+        out.fn.textContent="—"; out.cc.textContent="—"; out.zeta.textContent="—";
+        out.tStop.textContent="—"; out.gmaxB.textContent="—"; out.gmaxW.textContent="—";
+        return;
+      }
+      out.fn.innerHTML   = fmt(kpi.fn,3) + " Hz";
+      out.cc.textContent = fmt(kpi.cc,3);
+      out.zeta.innerHTML = fmt(kpi.zeta*100,1) + " %";
+      out.tStop.textContent = fmt(20*kpi.Tn,3) + " s";
+      out.gmaxB.innerHTML = (randomInput ? fmt(randomInput.gMaxB,2) + " g" : "—");
+      out.gmaxW.innerHTML = "—";
       return;
     }
+
     out.fn.innerHTML   = fmt(sim.fn,3) + " Hz";
     out.cc.textContent = fmt(sim.cc,3);
     out.zeta.innerHTML = fmt(sim.zeta*100,1) + " %";
@@ -438,7 +667,7 @@
     out.gmaxW.innerHTML = fmt(sim.gMaxW,2) + " g";
   }
 
-  // Schematic
+  // ---------- Schematic (grounded base, relative motion) ----------
   const canv = $("schem");
   const ctx = canv.getContext("2d");
 
@@ -482,7 +711,6 @@
 
   const SCENE_TOP_SHIFT = 26;
 
-  // CHANGED: base is visually grounded; motion uses ONLY z(t)
   function drawSchematic(sim, tNow, zNow){
     const w = canv.width, h = canv.height;
 
@@ -504,7 +732,7 @@
     ctx.lineTo(Math.round(w*0.94), groundY);
     ctx.stroke();
 
-    // Base block: fixed (grounded visually)
+    // Base block: fixed (grounded)
     const baseW = 210, baseH = 70;
     const baseY = groundY - baseH - 10;
     const xBase = xMid - baseW/2;
@@ -514,24 +742,22 @@
     ctx.lineWidth = 3;
     roundRect(xBase, baseY, baseW, baseH, 16);
 
-    // CHANGED: bigger nominal separation so spring/damper are longer
+    // Mass block (relative motion only)
     const bw = 170, bh = 76;
     const xMass = xMid - bw/2;
 
-    const gap0 = 120; // <- increased gap between masses (was much smaller)
-    const massY0 = baseY - gap0 - bh;  // nominal mass top
+    const gap0 = 120; // longer spring/damper
+    const massY0 = baseY - gap0 - bh;
 
-    // Scale relative displacement z to pixels (use sim span so it stays readable)
+    // scale z(t) to pixels using sim span
     let zScale = 1;
     if (sim){
       const zSpan = Math.max(1e-9, ...sim.z.map(v=>Math.abs(v)));
-      zScale = (0.22*h)/zSpan; // relative motion emphasized
+      zScale = (0.22*h)/zSpan;
     }
 
-    // In screen coords y increases downward. Assume +z means mass moves downward relative to base.
     const massY = massY0 + (sim ? (zNow * zScale) : 0);
 
-    // Attach points for spring/damper
     const yAttachBase = baseY - 6;
     const yAttachMass = massY + bh + 6;
 
@@ -540,36 +766,51 @@
     drawDamper(xDamper, yAttachMass, yAttachBase);
     drawSpring(xSpring, yAttachMass, yAttachBase);
 
-    // Mass block
     ctx.fillStyle = "#cfd5dd";
     ctx.strokeStyle = "#111827";
     ctx.lineWidth = 3;
     roundRect(xMass, massY, bw, bh, 18);
 
-    // Labels
     ctx.fillStyle = "#111827";
     ctx.font = "700 13px Arial, Helvetica, sans-serif";
     ctx.fillText("W", xMass + 12, massY + 22);
     ctx.font = "700 12px Arial, Helvetica, sans-serif";
     ctx.fillText("base", xBase + 12, baseY + 22);
 
-
-    // Time stamp (bigger + moved left)
-ctx.font = "800 16px Arial, Helvetica, sans-serif";  // was ~12px
-ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12));
-
+    // Timer: left-ish, slightly larger
+    ctx.font = "800 16px Arial, Helvetica, sans-serif";
+    ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12));
 
     ctx.restore();
   }
 
-  // Live recompute (debounced)
+  // ---------- Live recompute / UI ----------
   let simReady = null;
   let debounceTimer = null;
 
+  function updateRandomUI(){
+    const isRand = (inp.shape.value === "random");
+    psdPanel.style.display = isRand ? "block" : "none";
+    buildRandomBtn.disabled = !isRand;
+
+    // if switching away from Random, keep randomInput cached (so switching back keeps it armed),
+    // but do not use it unless shape==random.
+    if (!isRand){
+      psdStatus.textContent = "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
+    } else {
+      psdStatus.textContent = randomInput
+        ? "Random input is built and armed. Click Run to simulate using this base acceleration."
+        : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
+    }
+  }
+
   function recomputeLive(){
+    // Do not compute full sim here; just update summary KPIs and initial schematic.
     simReady = simulateFromInputs();
+
+    // If random needed, just show KPIs and keep schematic at rest.
     writeSummary(simReady);
-    drawSchematic(simReady, 0, 0);
+    drawSchematic(simReady && !simReady.__needsRandom ? simReady : null, 0, 0);
   }
 
   function requestRecompute(){
@@ -580,10 +821,63 @@ ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12)
 
   Object.values(inp).forEach(el => {
     el.addEventListener("input", requestRecompute);
-    el.addEventListener("change", requestRecompute);
+    el.addEventListener("change", ()=>{
+      if (el === inp.shape){
+        updateRandomUI();
+      }
+      requestRecompute();
+    });
   });
 
-  // Animation controls
+  // PSD inputs should trigger status update (but not force rebuild)
+  ["f1","s1","f2","s2","f3","s3","f4","s4","f5","s5"].forEach(id=>{
+    $(id).addEventListener("input", ()=>{
+      if (inp.shape.value === "random"){
+        psdStatus.textContent = randomInput
+          ? "PSD edited. Click “Build Random g(t)” again to rebuild/refresh the random time history."
+          : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
+      }
+    });
+  });
+
+  // ---------- Build Random button ----------
+  buildRandomBtn.addEventListener("click", ()=>{
+    if (anim.running) return;
+
+    const kpi = computeKPI();
+    if (!kpi){
+      psdStatus.textContent = "Enter valid W, k, and g before building Random input.";
+      return;
+    }
+
+    const res = buildRandomTimeHistory(kpi);
+    if (!res.ok){
+      psdStatus.textContent = res.msg;
+      randomInput = null;
+      recomputeLive();
+      return;
+    }
+
+    randomInput = {
+      t: res.t,
+      abase: res.abase,
+      dt: res.dt,
+      tStop: res.tStop,
+      gMaxB: res.gMaxB,
+      meta: res.meta
+    };
+
+    // Preview g(t) on chart (base only)
+    chart.data.labels = randomInput.t.map(x => x.toFixed(4));
+    chart.data.datasets[0].data = randomInput.abase;
+    chart.data.datasets[1].data = [];
+    chart.update();
+
+    psdStatus.textContent = `Random input built and armed. dt=${fmt(randomInput.dt,4)} s, duration=${fmt(randomInput.tStop,3)} s, base g max=${fmt(randomInput.gMaxB,2)} g. Click Run to simulate.`;
+    recomputeLive();
+  });
+
+  // ---------- Animation ----------
   function setButtons(running, paused){
     btnRun.disabled = running && !paused;
     btnPause.disabled = !running;
@@ -607,9 +901,14 @@ ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12)
       Gpk:+inp.Gpk.value, Tp:+inp.Tp.value, dt:+inp.dt.value, shape:inp.shape.value
     };
 
+    simReady = simulateFromInputs();
     if (!simReady){
       recomputeLive();
-      if (!simReady) return;
+      return;
+    }
+    if (simReady.__needsRandom){
+      alert("Random is selected. Click “Build Random g(t)” first to generate the base acceleration time history.");
+      return;
     }
 
     chart.data.labels = [];
@@ -666,7 +965,7 @@ ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12)
     cancelAnimationFrame(raf);
     raf = null;
 
-    if (simReady){
+    if (simReady && !simReady.__needsRandom){
       updateChartTo(simReady.t.length-1);
       drawSchematic(simReady, simReady.t.at(-1), simReady.z.at(-1));
     }
@@ -690,6 +989,10 @@ ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12)
     inp.dt.value = src.dt;
     inp.shape.value = src.shape;
 
+    // do not wipe randomInput on reset (keeps it “armed” unless user rebuilds),
+    // but update UI visibility.
+    updateRandomUI();
+
     chart.data.labels = [];
     chart.data.datasets[0].data = [];
     chart.data.datasets[1].data = [];
@@ -709,10 +1012,13 @@ ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12)
 
   speed.addEventListener("input", () => speedLbl.textContent = (+speed.value).toFixed(1) + "×");
 
+  // init
   speedLbl.textContent = (+speed.value).toFixed(1) + "×";
+  updateRandomUI();
   recomputeLive();
 })();
 </script>
 </body>
 </html>
+
 
