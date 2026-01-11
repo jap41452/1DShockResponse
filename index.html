@@ -144,7 +144,7 @@
     padding:8px;
     border:1px solid #333;
     background:#efefef;
-grid-column: 1 / -1; 
+    grid-column: 1 / -1; /* span all 3 columns */
   }
   .psdTitle{
     font-size:12px;
@@ -183,57 +183,52 @@ grid-column: 1 / -1;
     line-height:1.25;
   }
 
-/* Random PSD panel: 2-column layout */
-/* Random PSD panel: 2-column layout */
-.psdGrid{
-  display:grid;
-  grid-template-columns: 320px 1fr;   /* left table fixed, right charts get the space */
-  gap:12px;
-  align-items:start;
-}
+  /* Random PSD panel: 2-column layout */
+  .psdGrid{
+    display:grid;
+    grid-template-columns: 320px 1fr;   /* left table fixed, right charts get the space */
+    gap:12px;
+    align-items:start;
+  }
 
-.psdLeft{ min-width: 0; }
+  .psdLeft{ min-width: 0; }
 
-.psdRight{
-  display:grid;
-  grid-template-columns: 1fr 1fr;     /* two plots side-by-side */
-  gap:10px;
-  align-items:stretch;
-}
+  .psdRight{
+    display:grid;
+    grid-template-columns: 1fr 1fr;     /* two plots side-by-side */
+    gap:10px;
+    align-items:stretch;
+  }
 
-/* IMPORTANT: Chart.js needs the parent to have a real height */
-.psdChartBox{
-  border:1px solid #333;
-  background:#fff;
-  padding:6px;
-  height:220px;
-  box-sizing:border-box;
-  overflow:hidden;
+  /* Chart.js needs a real parent height */
+  .psdChartBox{
+    border:1px solid #333;
+    background:#fff;
+    padding:6px;
+    height:220px;
+    box-sizing:border-box;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .psdChartTitle{
+    font-size:12px;
+    font-weight:700;
+    margin:0 0 6px 0;
+  }
 
-  display:flex;
-  flex-direction:column;
-}
-.psdChartTitle{
-  font-size:12px;
-  font-weight:700;
-  margin:0 0 6px 0;
-}
+  #psdChart, #randChart{
+    display:block;
+    width:100% !important;
+    flex: 1 1 auto;
+    height: auto !important;
+  }
 
-/* IMPORTANT: force canvas to fill the box */
-#psdChart, #randChart{
-  display:block;
-  width:100% !important;
-  flex: 1 1 auto;
-  height: auto !important;
-}
-/* Responsive: stack charts under table on small screens */
-@media (max-width: 860px){
-  .psdGrid{ grid-template-columns: 1fr; }
-  .psdRight{ grid-template-columns: 1fr; }
-  .psdChartBox{ height: 220px; }
-}
-
-
+  @media (max-width: 860px){
+    .psdGrid{ grid-template-columns: 1fr; }
+    .psdRight{ grid-template-columns: 1fr; }
+    .psdChartBox{ height: 220px; }
+  }
 </style>
 </head>
 
@@ -244,88 +239,50 @@ grid-column: 1 / -1;
     <div class="r">XL4sim</div>
   </div>
 
+  <div class="upper">
+    <!-- Column 1: Inputs -->
+    <div>
+      <div class="rows" style="padding:4px 2px 0;">
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">W</div><div class="tri"></div></div>
+        <div><input id="W" type="number" step="any" value="10"></div>
 
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">k</div><div class="tri"></div></div>
+        <div><input id="k" type="number" step="any" value="2000"></div>
 
-<div class="upper">
-  <!-- Column 1: Inputs -->
-  <div>
-    <div class="rows" style="padding:4px 2px 0;">
-      <!-- your inputs exactly as-is -->
-      ...
-    </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">c</div><div class="tri"></div></div>
+        <div><input id="c" type="number" step="any" value="5"></div>
 
-    <div class="hint">
-      Inputs: W, k, c, gravitational constant g, peak shock level G<sub>pk</sub> in g’s,
-      pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
-    </div>
-  </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">g</div><div class="tri"></div></div>
+        <div><input id="g" type="number" step="any" value="386.09"></div>
 
-  <!-- Column 2: Summary -->
-  <div>
-    <div class="summaryRows" style="padding:4px 2px 0;">
-      <!-- your summary rows exactly as-is -->
-      ...
-    </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">G<sub>pk</sub></div><div class="tri"></div></div>
+        <div><input id="Gpk" type="number" step="any" value="10"></div>
 
-    <div class="hint">
-      Derived live from inputs. Auto-stop: pulse + 20 response cycles (or Random duration = 20 response cycles).
-    </div>
-  </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">T<sub>p</sub></div><div class="tri"></div></div>
+        <div><input id="Tp" type="number" step="any" value="20"></div>
 
-  <!-- Column 3: Schematic -->
-  <div class="schem">
-    <canvas id="schem" width="520" height="340"></canvas>
-  </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">&#916;t</div><div class="tri"></div></div>
+        <div><input id="dt" type="number" step="any" value="0.05"></div>
 
-  <!-- Row 2 (spans all columns): Random PSD panel -->
-  <div class="psdPanel" id="psdPanel">
-    <div class="psdGrid">
-      <div class="psdLeft">
-        <div class="psdTitle">Random input PSD (up to 5 points)</div>
-
-        <table class="psdTbl">
-          <thead>
-            <tr>
-              <th style="width:50%">Frequency (Hz)</th>
-              <th style="width:50%">PSD (g²/Hz)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
-            <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
-            <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
-            <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
-            <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
-          </tbody>
-        </table>
-
-        <div class="psdBtnRow">
-          <button class="btn" id="buildRandom">Build Random g(t)</button>
-          <div class="psdNote" id="psdStatus">
-            Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.
-          </div>
+        <div class="lab"><div style="width:18px;text-align:right;font-weight:700;">shape</div><div class="tri"></div></div>
+        <div>
+          <select id="shape">
+            <option value="halfSine">1/2 sine</option>
+            <option value="triangular">triangular</option>
+            <option value="rectangular">rectangular</option>
+            <option value="sawtooth">sawtooth</option>
+            <option value="random">Random</option>
+          </select>
         </div>
       </div>
 
-      <div class="psdRight" id="psdCharts" style="display:none;">
-        <div class="psdChartBox">
-          <div class="psdChartTitle">PSD (g²/Hz)</div>
-          <canvas id="psdChart"></canvas>
-        </div>
-        <div class="psdChartBox">
-          <div class="psdChartTitle">Random base accel, g(t)</div>
-          <canvas id="randChart"></canvas>
-        </div>
+      <div class="hint">
+        Inputs: W, k, c, gravitational constant g, peak shock level G<sub>pk</sub> in g’s,
+        pulse duration T<sub>p</sub> in ms (ignored for Random), integration step &#916;t in ms.
       </div>
     </div>
-  </div>
-</div>
 
-
-      
-
-
-    <!-- Summary -->
+    <!-- Column 2: Summary -->
     <div>
       <div class="summaryRows" style="padding:4px 2px 0;">
         <div class="sumLab"><div style="width:64px;font-weight:700;">f<sub>n</sub></div><div class="tri"></div></div>
@@ -352,11 +309,55 @@ grid-column: 1 / -1;
       </div>
     </div>
 
-    <!-- Schematic -->
+    <!-- Column 3: Schematic -->
     <div class="schem">
       <canvas id="schem" width="520" height="340"></canvas>
     </div>
-  </div>
+
+    <!-- Row 2 (spans all columns): Random PSD panel -->
+    <div class="psdPanel" id="psdPanel">
+      <div class="psdGrid">
+        <div class="psdLeft">
+          <div class="psdTitle">Random input PSD (up to 5 points)</div>
+
+          <table class="psdTbl">
+            <thead>
+              <tr>
+                <th style="width:50%">Frequency (Hz)</th>
+                <th style="width:50%">PSD (g²/Hz)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><input id="f1" type="number" step="any" value="10"></td><td><input id="s1" type="number" step="any" value="0.010"></td></tr>
+              <tr><td><input id="f2" type="number" step="any" value="30"></td><td><input id="s2" type="number" step="any" value="0.020"></td></tr>
+              <tr><td><input id="f3" type="number" step="any" value="60"></td><td><input id="s3" type="number" step="any" value="0.010"></td></tr>
+              <tr><td><input id="f4" type="number" step="any" value=""></td><td><input id="s4" type="number" step="any" value=""></td></tr>
+              <tr><td><input id="f5" type="number" step="any" value=""></td><td><input id="s5" type="number" step="any" value=""></td></tr>
+            </tbody>
+          </table>
+
+          <div class="psdBtnRow">
+            <button class="btn" id="buildRandom">Build Random g(t)</button>
+            <div class="psdNote" id="psdStatus">
+              Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.
+            </div>
+          </div>
+        </div>
+
+        <div class="psdRight" id="psdCharts" style="display:none;">
+          <div class="psdChartBox">
+            <div class="psdChartTitle">PSD (g²/Hz)</div>
+            <canvas id="psdChart"></canvas>
+          </div>
+          <div class="psdChartBox">
+            <div class="psdChartTitle">Random base accel, g(t)</div>
+            <canvas id="randChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /upper -->
 
   <div class="controls">
     <button class="btn" id="run">Run</button>
@@ -376,7 +377,7 @@ grid-column: 1 / -1;
       <canvas id="chart"></canvas>
     </div>
   </div>
-</div>
+</div><!-- /wrap -->
 
 <script>
 (() => {
@@ -399,11 +400,8 @@ grid-column: 1 / -1;
     W: $("W"), k: $("k"), c: $("c"), g: $("g"),
     Gpk: $("Gpk"), Tp: $("Tp"), dt: $("dt"), shape: $("shape")
   };
-  
 
-
-
-const out = {
+  const out = {
     fn: $("fn"), cc: $("cc"), zeta: $("zeta"),
     tStop: $("tStop"), gmaxB: $("gmaxB"), gmaxW: $("gmaxW")
   };
@@ -412,10 +410,9 @@ const out = {
   const buildRandomBtn = $("buildRandom");
   const psdStatus = $("psdStatus");
 
-const psdChartsWrap = $("psdCharts");
-let psdChartObj = null;
-let randChartObj = null;
-
+  const psdChartsWrap = $("psdCharts");
+  let psdChartObj = null;
+  let randChartObj = null;
 
   const btnRun = $("run"), btnPause = $("pause"), btnStop = $("stop"), btnReset = $("reset");
   const speed = $("speed"), speedLbl = $("speedLbl");
@@ -513,42 +510,34 @@ let randChartObj = null;
   }
 
   // ---------- Random PSD utilities ----------
+  function readPSDPoints(){
+    const readNum = (id) => {
+      const s = ($(id).value || "").trim();
+      if (s === "") return NaN;
+      const v = parseFloat(s);
+      return Number.isFinite(v) ? v : NaN;
+    };
 
-function readPSDPoints(){
-  const readNum = (id) => {
-    const s = ($(id).value || "").trim();
-    if (s === "") return NaN;          // <-- critical: blank stays blank
-    const v = parseFloat(s);
-    return Number.isFinite(v) ? v : NaN;
-  };
+    const rows = [
+      { f: readNum("f1"), s: readNum("s1") },
+      { f: readNum("f2"), s: readNum("s2") },
+      { f: readNum("f3"), s: readNum("s3") },
+      { f: readNum("f4"), s: readNum("s4") },
+      { f: readNum("f5"), s: readNum("s5") }
+    ];
 
-  const rows = [
-    { f: readNum("f1"), s: readNum("s1") },
-    { f: readNum("f2"), s: readNum("s2") },
-    { f: readNum("f3"), s: readNum("s3") },
-    { f: readNum("f4"), s: readNum("s4") },
-    { f: readNum("f5"), s: readNum("s5") }
-  ];
+    const pts = rows.filter(r => Number.isFinite(r.f) && Number.isFinite(r.s));
+    if (pts.length < 2) return { ok:false, msg:"Enter at least 2 PSD points." };
 
-  // keep rows that have both f and s finite
-  const pts = rows.filter(r => Number.isFinite(r.f) && Number.isFinite(r.s));
-
-  if (pts.length < 2) return { ok:false, msg:"Enter at least 2 PSD points." };
-
-  for (let i=0; i<pts.length; i++){
-    if (!(pts[i].f > 0)) return { ok:false, msg:"Frequencies must be > 0." };
-    if (!(pts[i].s >= 0)) return { ok:false, msg:"PSD values must be ≥ 0." };
-    if (i>0 && !(pts[i].f > pts[i-1].f)) return { ok:false, msg:"Frequencies must be strictly increasing." };
+    for (let i=0; i<pts.length; i++){
+      if (!(pts[i].f > 0)) return { ok:false, msg:"Frequencies must be > 0." };
+      if (!(pts[i].s >= 0)) return { ok:false, msg:"PSD values must be ≥ 0." };
+      if (i>0 && !(pts[i].f > pts[i-1].f)) return { ok:false, msg:"Frequencies must be strictly increasing." };
+    }
+    return { ok:true, pts };
   }
 
-  return { ok:true, pts };
-}
-
-
-
-
   function interpPSD(f, pts){
-    // piecewise linear; clamp outside range to end values
     if (f <= pts[0].f) return pts[0].s;
     if (f >= pts[pts.length-1].f) return pts[pts.length-1].s;
     for (let i=0;i<pts.length-1;i++){
@@ -563,8 +552,6 @@ function readPSDPoints(){
   }
 
   function buildRandomTimeHistory(kpi){
-    // Build base accel history a_b(t) in g from PSD via random-phase sum-of-sinusoids.
-    // PSD is in g^2/Hz, frequency in Hz.
     const chk = readPSDPoints();
     if (!chk.ok) return {ok:false, msg:chk.msg};
     const pts = chk.pts;
@@ -572,14 +559,11 @@ function readPSDPoints(){
     const dt_ms = +inp.dt.value;
     if (!(dt_ms>0)) return {ok:false, msg:"Δt must be > 0."};
 
-    // Use same stop rule: 20 response cycles
     const cycles = 20;
     const tStop = cycles * kpi.Tn;
 
-    // enforce a dt that resolves the highest PSD frequency reasonably, and the response
     let dt = dt_ms/1000;
     const fmax = pts[pts.length-1].f;
-    // Nyquist: dt <= 1/(2*fmax). For synthesis quality, use ~10–15 points/cycle at fmax.
     const dtNy = 1/(2*fmax + 1e-12);
     const dtQual = 1/(12*fmax + 1e-12);
     dt = Math.min(dt, dtNy, dtQual, kpi.Tn/240);
@@ -588,22 +572,18 @@ function readPSDPoints(){
     const n = Math.ceil(tStop/dt) + 1;
     const t = new Array(n);
 
-    // Discretize frequency axis into bins and sum
     const nbins = 256;
     const fmin = pts[0].f;
     const fspan = Math.max(1e-9, (fmax - fmin));
     const df = fspan/(nbins-1);
 
-    // precompute bin freqs, amplitudes, phases
     const freqs = new Array(nbins);
     const amps  = new Array(nbins);
     const phs   = new Array(nbins);
 
     for (let i=0;i<nbins;i++){
       const fi = fmin + i*df;
-      const Si = Math.max(0, interpPSD(fi, pts)); // g^2/Hz
-      // amplitude per bin for one-sided PSD approximation:
-      // a(t) = Σ sqrt(2*S(fi)*df) cos(2π fi t + φi)
+      const Si = Math.max(0, interpPSD(fi, pts));
       freqs[i] = fi;
       amps[i]  = Math.sqrt(2*Si*df);
       phs[i]   = 2*Math.PI*Math.random();
@@ -619,7 +599,7 @@ function readPSDPoints(){
       for (let i=0;i<nbins;i++){
         val += amps[i]*Math.cos(2*Math.PI*freqs[i]*tt + phs[i]);
       }
-      abase[k] = val; // g
+      abase[k] = val;
       gMaxB = Math.max(gMaxB, Math.abs(val));
     }
 
@@ -661,18 +641,15 @@ function readPSDPoints(){
 
     if (shape === "random"){
       if (!randomInput){
-        return {__needsRandom:true, kpi}; // signal caller
+        return {__needsRandom:true, kpi};
       }
-      // Force simulation time grid to align with generated random input dt for consistency
       dt = randomInput.dt;
       tStop = randomInput.tStop;
       abase_g_func = abaseFromRandom;
     } else {
       const Tp = (Tp_ms>0) ? (Tp_ms/1000) : 0.02;
-      // Limit dt to resolve both pulse and response
       dt = Math.max(1e-6, Math.min(dt, Tp/60, Tn/240));
       tStop = Tp + cycles*Tn;
-
       abase_g_func = (tt)=>baseAccelPulse_g(tt, Tp, Gpk, shape);
     }
 
@@ -686,7 +663,6 @@ function readPSDPoints(){
     const abase = new Array(n);
     const aweight = new Array(n);
 
-    // ICs: at rest
     let X = [0,0,0,0];
     let tt = 0;
 
@@ -745,7 +721,7 @@ function readPSDPoints(){
     out.gmaxW.innerHTML = fmt(sim.gMaxW,2) + " g";
   }
 
-  // ---------- Schematic (grounded base, relative motion) ----------
+  // ---------- Schematic ----------
   const canv = $("schem");
   const ctx = canv.getContext("2d");
 
@@ -801,7 +777,6 @@ function readPSDPoints(){
 
     const xMid = Math.round(w*0.72);
 
-    // Ground line
     const groundY = Math.round(h*0.86);
     ctx.strokeStyle = "#111827";
     ctx.lineWidth = 3;
@@ -810,7 +785,6 @@ function readPSDPoints(){
     ctx.lineTo(Math.round(w*0.94), groundY);
     ctx.stroke();
 
-    // Base block: fixed (grounded)
     const baseW = 210, baseH = 70;
     const baseY = groundY - baseH - 10;
     const xBase = xMid - baseW/2;
@@ -820,14 +794,12 @@ function readPSDPoints(){
     ctx.lineWidth = 3;
     roundRect(xBase, baseY, baseW, baseH, 16);
 
-    // Mass block (relative motion only)
     const bw = 170, bh = 76;
     const xMass = xMid - bw/2;
 
-    const gap0 = 120; // longer spring/damper
+    const gap0 = 120;
     const massY0 = baseY - gap0 - bh;
 
-    // scale z(t) to pixels using sim span
     let zScale = 1;
     if (sim){
       const zSpan = Math.max(1e-9, ...sim.z.map(v=>Math.abs(v)));
@@ -855,147 +827,105 @@ function readPSDPoints(){
     ctx.font = "700 12px Arial, Helvetica, sans-serif";
     ctx.fillText("base", xBase + 12, baseY + 22);
 
-    // Timer: left-ish, slightly larger
     ctx.font = "800 16px Arial, Helvetica, sans-serif";
     ctx.fillText("t = " + fmt(tNow,4) + " s", Math.round(w*0.30), Math.round(h*0.12));
 
     ctx.restore();
   }
 
-  // ---------- Live recompute / UI ----------
+  // ---------- Random charts ----------
+  function destroyRandomCharts(){
+    if (psdChartObj){ psdChartObj.destroy(); psdChartObj = null; }
+    if (randChartObj){ randChartObj.destroy(); randChartObj = null; }
+    if (psdChartsWrap) psdChartsWrap.style.display = "none";
+  }
+
+  function makePSDSeriesFromPoints(pts){
+    return { f: pts.map(p => p.f), s: pts.map(p => p.s) };
+  }
+
+  function renderRandomCharts(){
+    const chk = readPSDPoints();
+    if (!chk.ok) return;
+    const pts = chk.pts;
+
+    const c1 = $("psdChart");
+    const c2 = $("randChart");
+    if (!c1 || !c2) return;
+
+    destroyRandomCharts();
+    psdChartsWrap.style.display = "grid";
+
+    const psdSeries = makePSDSeriesFromPoints(pts);
+    psdChartObj = new Chart(c1.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: psdSeries.f.map(v => String(v)),
+        datasets: [{ data: psdSeries.s, borderWidth: 2, pointRadius: 2, tension: 0 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display:false } },
+        scales: {
+          x: { title: { display:true, text:"Frequency (Hz)" } },
+          y: { title: { display:true, text:"g²/Hz" } }
+        }
+      }
+    });
+
+    const t = randomInput.t;
+    const a = randomInput.abase;
+    const maxPts = 2500;
+    const step = Math.max(1, Math.floor(t.length / maxPts));
+
+    const tPlot = [];
+    const aPlot = [];
+    for (let i=0; i<t.length; i+=step){
+      tPlot.push(t[i]);
+      aPlot.push(a[i]);
+    }
+
+    randChartObj = new Chart(c2.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: tPlot.map(v => v.toFixed(4)),
+        datasets: [{ data: aPlot, borderWidth: 2, pointRadius: 0, tension: 0 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display:false } },
+        scales: {
+          x: { title: { display:true, text:"Time (s)" }, ticks: { maxTicksLimit: 6 } },
+          y: { title: { display:true, text:"g" } }
+        }
+      }
+    });
+  }
+
+  function updateRandomUI(){
+    const isRand = (inp.shape.value === "random");
+    psdPanel.style.display = isRand ? "block" : "none";
+    buildRandomBtn.disabled = !isRand;
+
+    if (!isRand) destroyRandomCharts();
+
+    psdStatus.textContent = !isRand
+      ? "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input."
+      : (randomInput
+          ? "Random input is built and armed. Click Run to simulate using this base acceleration."
+          : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.");
+  }
+
+  // ---------- Live recompute ----------
   let simReady = null;
   let debounceTimer = null;
 
-
-
-function destroyRandomCharts(){
-  if (psdChartObj){ psdChartObj.destroy(); psdChartObj = null; }
-  if (randChartObj){ randChartObj.destroy(); randChartObj = null; }
-  if (psdChartsWrap) psdChartsWrap.style.display = "none";
-}
-
-function makePSDSeriesFromPoints(pts){
-  // For plotting the PSD curve as straight segments through the user points
-  return {
-    f: pts.map(p => p.f),
-    s: pts.map(p => p.s)
-  };
-}
-
-function renderRandomCharts(){
-  // Build PSD curve from the entered points (not the discretized bins)
-  const chk = readPSDPoints();
-  if (!chk.ok) return; // should not happen if Build succeeded
-  const pts = chk.pts;
-
-  const c1 = $("psdChart");
-  const c2 = $("randChart");
-  if (!c1 || !c2) return;
-
-  const psdCtx = c1.getContext("2d");
-  const rndCtx = c2.getContext("2d");
-
-
-
-
-  // Ensure old charts are removed
-  destroyRandomCharts();
-
-  // Show wrapper
-  psdChartsWrap.style.display = "grid";
-
-  // PSD chart
-  const psdSeries = makePSDSeriesFromPoints(pts);
-  psdChartObj = new Chart(psdCtx, {
-    type: "line",
-    data: {
-      labels: psdSeries.f.map(v => String(v)),
-      datasets: [{
-        label: "PSD (g²/Hz)",
-        data: psdSeries.s,
-        borderWidth: 2,
-        pointRadius: 2,
-        tension: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: { legend: { display:false } },
-      scales: {
-        x: { title: { display:true, text:"Frequency (Hz)" } },
-        y: { title: { display:true, text:"g²/Hz" } }
-      }
-    }
-  });
-
-  // Random time history chart (downsample for speed if very long)
-  const t = randomInput.t;
-  const a = randomInput.abase;
-  const maxPts = 2500;
-  const step = Math.max(1, Math.floor(t.length / maxPts));
-
-  const tPlot = [];
-  const aPlot = [];
-  for (let i=0; i<t.length; i+=step){
-    tPlot.push(t[i]);
-    aPlot.push(a[i]);
-  }
-
-  randChartObj = new Chart(rndCtx, {
-    type: "line",
-    data: {
-      labels: tPlot.map(v => v.toFixed(4)),
-      datasets: [{
-        label: "a_b(t) (g)",
-        data: aPlot,
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: { legend: { display:false } },
-      scales: {
-        x: { title: { display:true, text:"Time (s)" }, ticks: { maxTicksLimit: 6 } },
-        y: { title: { display:true, text:"g" } }
-      }
-    }
-  });
-}
-
-
-
-
-
-function updateRandomUI(){
-  const isRand = (inp.shape.value === "random");
-
-  psdPanel.style.display = isRand ? "block" : "none";
-  buildRandomBtn.disabled = !isRand;
-
-  if (!isRand){
-    destroyRandomCharts();   // <-- remove the two plots when Random goes away
-  }
-
-  psdStatus.textContent = !isRand
-    ? "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input."
-    : (randomInput
-        ? "Random input is built and armed. Click Run to simulate using this base acceleration."
-        : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.");
-}
-
-
-
   function recomputeLive(){
-    // Do not compute full sim here; just update summary KPIs and initial schematic.
     simReady = simulateFromInputs();
-
-    // If random needed, just show KPIs and keep schematic at rest.
     writeSummary(simReady);
     drawSchematic(simReady && !simReady.__needsRandom ? simReady : null, 0, 0);
   }
@@ -1009,18 +939,11 @@ function updateRandomUI(){
   Object.values(inp).forEach(el => {
     el.addEventListener("input", requestRecompute);
     el.addEventListener("change", ()=>{
-      if (el === inp.shape){
-        updateRandomUI();
-      }
+      if (el === inp.shape) updateRandomUI();
       requestRecompute();
     });
   });
 
-inp.shape.addEventListener("input", () => { updateRandomUI(); requestRecompute(); });
-inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(); });
-
-
-  // PSD inputs should trigger status update (but not force rebuild)
   ["f1","s1","f2","s2","f3","s3","f4","s4","f5","s5"].forEach(id=>{
     $(id).addEventListener("input", ()=>{
       if (inp.shape.value === "random"){
@@ -1042,16 +965,12 @@ inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(
     }
 
     const res = buildRandomTimeHistory(kpi);
-console.log("BuildRandom:", res);   
-
- if (!res.ok){
+    if (!res.ok){
       psdStatus.textContent = res.msg;
       randomInput = null;
       recomputeLive();
       return;
     }
-
-
 
     randomInput = {
       t: res.t,
@@ -1062,11 +981,8 @@ console.log("BuildRandom:", res);
       meta: res.meta
     };
 
+    renderRandomCharts();
 
-renderRandomCharts();
-
-
-    // Preview g(t) on chart (base only)
     chart.data.labels = randomInput.t.map(x => x.toFixed(4));
     chart.data.datasets[0].data = randomInput.abase;
     chart.data.datasets[1].data = [];
@@ -1149,7 +1065,6 @@ renderRandomCharts();
 
       updateChartTo(anim.idx);
       drawSchematic(simReady, simReady.t[anim.idx], simReady.z[anim.idx]);
-
       raf = requestAnimationFrame(step);
     };
 
@@ -1188,8 +1103,6 @@ renderRandomCharts();
     inp.dt.value = src.dt;
     inp.shape.value = src.shape;
 
-    // do not wipe randomInput on reset (keeps it “armed” unless user rebuilds),
-    // but update UI visibility.
     updateRandomUI();
 
     chart.data.labels = [];
@@ -1219,6 +1132,7 @@ renderRandomCharts();
 </script>
 </body>
 </html>
+
 
 
 
