@@ -260,7 +260,8 @@
         </table>
 
         <div class="psdBtnRow">
-          <button class="btn" id="buildRandom" disabled>Build Random g(t)</button>
+<button class="btn" id="buildRandom">Build Random g(t)</button>
+
           <div class="psdNote" id="psdStatus">Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.</div>
         </div>
       </div>
@@ -341,8 +342,6 @@
     Gpk: $("Gpk"), Tp: $("Tp"), dt: $("dt"), shape: $("shape")
   };
   
-inp.shape.addEventListener("input", () => { updateRandomUI(); requestRecompute(); });
-inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(); });
 
 
 
@@ -799,25 +798,16 @@ function updateRandomUI(){
   const isRand = (inp.shape.value === "random");
 
   psdPanel.style.display = isRand ? "block" : "none";
+  buildRandomBtn.disabled = !isRand;
 
-  // Force-enable/disable reliably (covers cases where setting .disabled doesn't repaint)
-  if (isRand){
-    buildRandomBtn.disabled = false;
-    buildRandomBtn.removeAttribute("disabled");
-  } else {
-    buildRandomBtn.disabled = true;
-    buildRandomBtn.setAttribute("disabled", "disabled");
-  }
-
-  if (!isRand){
-    psdStatus.textContent =
-      "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
-  } else {
-    psdStatus.textContent = randomInput
-      ? "Random input is built and armed. Click Run to simulate using this base acceleration."
-      : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.";
-  }
+  psdStatus.textContent = !isRand
+    ? "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input."
+    : (randomInput
+        ? "Random input is built and armed. Click Run to simulate using this base acceleration."
+        : "Provide 2–5 points, increasing frequency. Click “Build Random g(t)” to preview and arm the base input.");
 }
+
+
 
 
   function recomputeLive(){
@@ -844,6 +834,10 @@ function updateRandomUI(){
       requestRecompute();
     });
   });
+
+inp.shape.addEventListener("input", () => { updateRandomUI(); requestRecompute(); });
+inp.shape.addEventListener("change", () => { updateRandomUI(); requestRecompute(); });
+
 
   // PSD inputs should trigger status update (but not force rebuild)
   ["f1","s1","f2","s2","f3","s3","f4","s4","f5","s5"].forEach(id=>{
@@ -1036,6 +1030,7 @@ function updateRandomUI(){
 </script>
 </body>
 </html>
+
 
 
 
