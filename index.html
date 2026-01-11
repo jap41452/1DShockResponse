@@ -422,28 +422,47 @@
   // Random input cache: generated base acceleration history (g) aligned to dt & tStop
   let randomInput = null; // {t:[], abase:[], dt, tStop, gMaxB, meta:{fmin,fmax,nbins}}
 
-  // Chart
-  const chart = new Chart($("chart").getContext("2d"), {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [
-        { label: "Base Accel, a_b (g)", data: [], borderWidth: 2, pointRadius: 0, tension: 0.05, yAxisID: "yG" },
-        { label: "Weight Accel, a_w (g)", data: [], borderWidth: 2, pointRadius: 0, tension: 0.05, borderDash: [6,4], yAxisID: "yG" }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "top" } },
-      scales: {
-        x: { title: { display: true, text: "Time, sec." }, ticks: { maxTicksLimit: 10 } },
-        yG: { position: "left", title: { display: true, text: "Acceleration, g's" } }
+//Chart
+const chart = new Chart($("chart").getContext("2d"), {
+  type: "line",
+  data: {
+    datasets: [
+      {
+        label: "Base Accel, a_b (g)",
+        data: [],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.05,
+        yAxisID: "yG"
+      },
+      {
+        label: "Weight Accel, a_w (g)",
+        data: [],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.05,
+        borderDash: [6,4],
+        yAxisID: "yG"
       }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { position: "top" } },
+    scales: {
+      x: {
+        type: "linear",
+        title: { display: true, text: "Time, sec." },
+        ticks: { maxTicksLimit: 10 }
+      },
+      yG: { position: "left", title: { display: true, text: "Acceleration, g's" } }
     }
-  });
+  }
+});
+
 
   // Shock shapes (single pulse 0..Tp), used for non-random
   function shapeVal(s, kind){
@@ -983,10 +1002,12 @@
 
     renderRandomCharts();
 
-    chart.data.labels = randomInput.t.map(x => x.toFixed(4));
-    chart.data.datasets[0].data = randomInput.abase;
-    chart.data.datasets[1].data = [];
-    chart.update();
+
+const basePts = randomInput.t.map((tt,i)=>({ x: tt, y: randomInput.abase[i] }));
+chart.data.datasets[0].data = basePts;
+chart.data.datasets[1].data = []; // preview = base only (as you intended)
+chart.update();
+
 
     psdStatus.textContent = `Random input built and armed. dt=${fmt(randomInput.dt,4)} s, duration=${fmt(randomInput.tStop,3)} s, base g max=${fmt(randomInput.gMaxB,2)} g. Click Run to simulate.`;
     recomputeLive();
@@ -1003,12 +1024,24 @@
   let anim = { running:false, paused:false, idx:0, t0:0 };
   let raf = null;
 
-  function updateChartTo(idx){
-    chart.data.labels = simReady.t.slice(0, idx+1).map(x => x.toFixed(4));
-    chart.data.datasets[0].data = simReady.abase.slice(0, idx+1);
-    chart.data.datasets[1].data = simReady.aweight.slice(0, idx+1);
-    chart.update();
+
+function updateChartTo(idx){
+  const n = idx + 1;
+
+  const basePts = new Array(n);
+  const wPts    = new Array(n);
+
+  for (let i=0; i<n; i++){
+    basePts[i] = { x: simReady.t[i], y: simReady.abase[i] };
+    wPts[i]    = { x: simReady.t[i], y: simReady.aweight[i] };
   }
+
+  chart.data.datasets[0].data = basePts;
+  chart.data.datasets[1].data = wPts;
+  chart.update();
+}
+
+
 
   function start(){
     lastRunInputs = {
