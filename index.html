@@ -1194,7 +1194,7 @@
         module: "1D Shock Response",
         version: "1.0",
         timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent
+     
       },
       inputs: {
         W: d.W, k: d.k, c: d.c, g: d.g, Gpk: d.Gpk, 
@@ -1225,10 +1225,10 @@
 
     // 1. Time History CSV
     // Columns: t_sec, abase_g, aweight_g, z, zd, y, yd
-    let csv = "t_sec,abase_g,aweight_g,z,zd,y,yd\n";
+    let csv = "t_sec,abase_g,aweight\n";
     for(let i=0; i<d.t.length; i++){
       // using simple number conversion to string
-      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]},${d.z[i]},${d.zd[i]},${d.y[i]},${d.yd[i]}\n`;
+      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}}\n`;
     }
     downloadFile(csv, "time_history.csv", "text/csv");
 
@@ -1265,6 +1265,7 @@
 </script>
 </body>
 </html>
+
 
 
 
