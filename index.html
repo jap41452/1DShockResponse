@@ -461,10 +461,13 @@ const chart = new Chart($("chart").getContext("2d"), {
     ]
   },
   options: {
-    responsive: true,
+   
+ responsive: true,
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: "index", intersect: false },
+layout: { padding: { bottom: 8 } },  // add this
+
     plugins: { legend: { position: "top" } },
     scales: {
       x: {
@@ -1179,6 +1182,7 @@ function updateChartTo(idx){
 </script>
 </body>
 </html>
+
 
 
 
