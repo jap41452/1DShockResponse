@@ -1103,7 +1103,8 @@
     recomputeLive();
   }
 
-  // --- EXPORT FUNCTIONS ---
+// --- EXPORT FUNCTIONS ---
+
   function downloadFile(content, fileName, mimeType) {
     const a = document.createElement("a");
     const blob = new Blob([content], {type: mimeType});
@@ -1149,23 +1150,12 @@
     if(!frozenRunData) return;
     const d = frozenRunData;
 
-    // 1. Time History CSV
+    // Time History CSV Only
     let csv = "t_sec,abase_g,aweight\n";
     for(let i=0; i<d.t.length; i++){
       csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}\n`;
     }
     downloadFile(csv, "time_history.csv", "text/csv");
-
-    // 2. Random PSD CSV (if applicable)
-    if(d.shape === "random" && d.psdPts){
-      let psdCsv = "f_hz,psd_g2_per_hz\n";
-      d.psdPts.forEach(p => {
-        psdCsv += `${p.f},${p.s}\n`;
-      });
-      setTimeout(() => {
-        downloadFile(psdCsv, "psd_points.csv", "text/csv");
-      }, 500);
-    }
   });
 
   btnRun.addEventListener("click", start);
@@ -1185,8 +1175,11 @@
   recomputeLive();
 })();
 </script>
+
+
 </body>
 </html>
+
 
 
 
