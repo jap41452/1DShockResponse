@@ -1228,7 +1228,7 @@
     let csv = "t_sec,abase_g,aweight\n";
     for(let i=0; i<d.t.length; i++){
       // using simple number conversion to string
-      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}\n`;
+      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}}\n`;
    }
     downloadFile(csv, "time_history.csv", "text/csv");
 
@@ -1255,6 +1255,7 @@
 </script>
 </body>
 </html>
+
 
 
 
