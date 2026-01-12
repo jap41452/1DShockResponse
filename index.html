@@ -1232,16 +1232,6 @@
     }
     downloadFile(csv, "time_history.csv", "text/csv");
 
-    // 2. Random PSD CSV (if applicable)
-    if(d.shape === "random" && d.psdPts){
-      let psdCsv = "f_hz,psd_g2_per_hz\n";
-      d.psdPts.forEach(p => {
-        psdCsv += `${p.f},${p.s}\n`;
-      });
-      // slight delay to ensure browser handles double download nicely
-      setTimeout(() => {
-        downloadFile(psdCsv, "psd_points.csv", "text/csv");
-      }, 500);
     }
   });
 
@@ -1265,6 +1255,7 @@
 </script>
 </body>
 </html>
+
 
 
 
