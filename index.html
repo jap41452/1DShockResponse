@@ -319,7 +319,7 @@
       </div>
 
       <div class="hint">
-        Derived live from inputs. Auto-stop: pulse + 20 response cycles (or Random duration = 20 response cycles).
+        Derived live from inputs. Auto-stop: pulse + 20 response cycles (or Random duration = 100 response cycles).
       </div>
     </div>
 
@@ -435,6 +435,12 @@
 
   // Random input cache: generated base acceleration history (g) aligned to dt & tStop
   let randomInput = null; // {t:[], abase:[], dt, tStop, gMaxB, meta:{fmin,fmax,nbins}}
+
+
+const RESPONSE_CYCLES = {
+  random: 100,
+  deterministic: 20
+};
 
 //Chart
 const chart = new Chart($("chart").getContext("2d"), {
@@ -595,8 +601,9 @@ layout: { padding: { bottom: 8 } },  // add this
     const dt_ms = +inp.dt.value;
     if (!(dt_ms>0)) return {ok:false, msg:"Δt must be > 0."};
 
-    const cycles = 20;
-    const tStop = cycles * kpi.Tn;
+const cycles = RESPONSE_CYCLES.random;   // 100 cycles for Random
+const tStop = cycles * kpi.Tn;
+
 
     let dt = dt_ms/1000;
     const fmax = pts[pts.length-1].f;
@@ -675,19 +682,19 @@ layout: { padding: { bottom: 8 } },  // add this
 
     let abase_g_func = null;
 
-    if (shape === "random"){
-      if (!randomInput){
-        return {__needsRandom:true, kpi};
-      }
-      dt = randomInput.dt;
-      tStop = randomInput.tStop;
-      abase_g_func = abaseFromRandom;
-    } else {
-      const Tp = (Tp_ms>0) ? (Tp_ms/1000) : 0.02;
-      dt = Math.max(1e-6, Math.min(dt, Tp/60, Tn/240));
-      tStop = Tp + cycles*Tn;
-      abase_g_func = (tt)=>baseAccelPulse_g(tt, Tp, Gpk, shape);
-    }
+if (shape === "random"){
+  dt = randomInput.dt;
+  tStop = randomInput.tStop;
+  abase_g_func = abaseFromRandom;
+} else {
+  const cycles = RESPONSE_CYCLES.deterministic; // 20
+  const Tp = (Tp_ms>0) ? (Tp_ms/1000) : 0.02;
+  dt = Math.max(1e-6, Math.min(dt, Tp/60, Tn/240));
+  tStop = Tp + cycles*Tn;
+  abase_g_func = (tt)=>baseAccelPulse_g(tt, Tp, Gpk, shape);
+}
+
+
 
     const n = Math.ceil(tStop/dt) + 1;
 
@@ -1191,6 +1198,7 @@ function updateChartTo(idx){
 </script>
 </body>
 </html>
+
 
 
 
