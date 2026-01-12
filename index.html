@@ -373,11 +373,16 @@
 
   </div><!-- /upper -->
 
-  <div class="controls">
-    <button class="btn" id="run">Run</button>
-    <button class="btn" id="pause" disabled>Pause</button>
-    <button class="btn" id="stop" disabled>Stop</button>
-    <button class="btn" id="reset">Reset</button>
+
+<div class="controls">
+  <button class="btn" id="run">Run</button>
+  <button class="btn" id="pause" disabled>Pause</button>
+  <button class="btn" id="stop" disabled>Stop</button>
+  <button class="btn" id="reset">Reset</button>
+
+  <button class="btn" id="exportJson" title="Export inputs + KPIs + results">Export JSON</button>
+  <button class="btn" id="exportCsv"  title="Export time histories as CSV">Export CSV</button>
+
 
     <div class="ctl">
       <div style="font-weight:700;">Animation speed</div>
@@ -429,7 +434,17 @@
   let randChartObj = null;
 
   const btnRun = $("run"), btnPause = $("pause"), btnStop = $("stop"), btnReset = $("reset");
-  const speed = $("speed"), speedLbl = $("speedLbl");
+  
+
+const btnExportJson = $("exportJson");
+const btnExportCsv  = $("exportCsv");
+
+
+const speed = $("speed"), speedLbl = $("speedLbl");
+
+
+
+
 
   let lastRunInputs = null;
 
@@ -550,6 +565,115 @@ layout: { padding: { bottom: 8 } },  // add this
 
     return {W,k,c,g,m,wn,fn,cc,zeta,Tn};
   }
+
+
+function downloadBlob(filename, mime, text){
+  const blob = new Blob([text], {type: mime});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 0);
+}
+
+function isoStamp(){
+  const d = new Date();
+  const pad = (n)=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+/**
+ * Returns a snapshot object describing:
+ * - current UI inputs
+ * - lastRunInputs (if available)
+ * - KPIs
+ * - random PSD points (if valid)
+ * - random realization metadata + time history (if built)
+ * - simReady results (if available and valid)
+ */
+function buildExportSnapshot(){
+  const uiInputs = {
+    W:+inp.W.value, k:+inp.k.value, c:+inp.c.value, g:+inp.g.value,
+    Gpk:+inp.Gpk.value, Tp_ms:+inp.Tp.value, dt_ms:+inp.dt.value,
+    shape: inp.shape.value
+  };
+
+  const kpi = computeKPI();
+
+  // PSD points (only meaningful when Random is selected, but we can include if valid anyway)
+  let psdPts = null;
+  const chk = readPSDPoints();
+  if (chk.ok){
+    psdPts = chk.pts.map(p => ({ f_hz: p.f, psd_g2_per_hz: p.s }));
+  }
+
+  // Random input realization (if built)
+  let random = null;
+  if (randomInput){
+    random = {
+      psd_points: psdPts,  // may be null if invalid right now; still include if built
+      synthesis: randomInput.meta || null,
+      realization: {
+        dt_s: randomInput.dt,
+        tStop_s: randomInput.tStop,
+        gMaxB: randomInput.gMaxB
+      },
+      // include the realized base accel history so it is fully reproducible
+      t_s: randomInput.t,
+      abase_g: randomInput.abase
+    };
+  } else {
+    // even if not built, include PSD points (if any)
+    if (psdPts) random = { psd_points: psdPts };
+  }
+
+  // Simulation results
+  let results = null;
+  if (simReady && !simReady.__needsRandom){
+    results = {
+      dt_s: simReady.dt,
+      tStop_s: simReady.tStop,
+      gMaxB: simReady.gMaxB,
+      gMaxW: simReady.gMaxW,
+
+      // time histories
+      t_s: simReady.t,
+      abase_g: simReady.abase,
+      aweight_g: simReady.aweight,
+
+      // optional internal states (keep; they’re often valuable)
+      z: simReady.z,
+      zd: simReady.zd,
+      y: simReady.y,
+      yd: simReady.yd
+    };
+  }
+
+  return {
+    module: {
+      name: "1D Shock Response",
+      timestamp: new Date().toISOString()
+    },
+    inputs: uiInputs,
+    last_run_inputs: lastRunInputs || null,
+    derived: kpi ? {
+      m: kpi.m,
+      wn_rad_s: kpi.wn,
+      fn_hz: kpi.fn,
+      cc: kpi.cc,
+      zeta: kpi.zeta,
+      Tn_s: kpi.Tn
+    } : null,
+    random,
+    results
+  };
+}
+
+
 
   // ---------- Random PSD utilities ----------
   function readPSDPoints(){
@@ -1188,6 +1312,76 @@ function updateChartTo(idx){
   btnStop.addEventListener("click", stop);
   btnReset.addEventListener("click", hardReset);
 
+
+
+function arrayLenSafe(a){ return (Array.isArray(a) ? a.length : 0); }
+
+function toCSVRow(arr){
+  // basic CSV escaping for values that might include commas (rare here)
+  return arr.map(v => {
+    const s = (v === null || v === undefined) ? "" : String(v);
+    return (s.includes(",") || s.includes('"') || s.includes("\n"))
+      ? `"${s.replace(/"/g,'""')}"`
+      : s;
+  }).join(",");
+}
+
+btnExportCsv.addEventListener("click", () => {
+  // Prefer exporting from a completed/available simulation; if none, attempt a sim.
+  if (!anim.running){
+    const trySim = simulateFromInputs();
+    if (trySim && !trySim.__needsRandom) simReady = trySim;
+  }
+
+  if (!simReady || simReady.__needsRandom){
+    alert("No run results available to export. If Random is selected, click 'Build Random' then 'Run' first.");
+    return;
+  }
+
+  // Main time history CSV
+  const n = Math.min(
+    arrayLenSafe(simReady.t),
+    arrayLenSafe(simReady.abase),
+    arrayLenSafe(simReady.aweight),
+    arrayLenSafe(simReady.z),
+    arrayLenSafe(simReady.zd),
+    arrayLenSafe(simReady.y),
+    arrayLenSafe(simReady.yd)
+  );
+
+  // Optional: downsample to keep file size reasonable (set to 1 for full resolution)
+  const DOWNSAMPLE = 1;
+
+  const lines = [];
+  lines.push(toCSVRow(["t_sec","abase_g","aweight_g","z","zd","y","yd"]));
+  for (let i=0; i<n; i+=DOWNSAMPLE){
+    lines.push(toCSVRow([
+      simReady.t[i],
+      simReady.abase[i],
+      simReady.aweight[i],
+      simReady.z[i],
+      simReady.zd[i],
+      simReady.y[i],
+      simReady.yd[i]
+    ]));
+  }
+
+  downloadBlob(`1D_Shock_TimeHistory_${isoStamp()}.csv`, "text/csv;charset=utf-8", lines.join("\n"));
+
+  // PSD points CSV (if valid points exist)
+  const chk = readPSDPoints();
+  if (chk.ok){
+    const pts = chk.pts;
+    const plines = [];
+    plines.push(toCSVRow(["f_hz","psd_g2_per_hz"]));
+    for (const p of pts){
+      plines.push(toCSVRow([p.f, p.s]));
+    }
+    downloadBlob(`1D_Shock_PSDPoints_${isoStamp()}.csv`, "text/csv;charset=utf-8", plines.join("\n"));
+  }
+});
+
+
   speed.addEventListener("input", () => speedLbl.textContent = (+speed.value).toFixed(1) + "×");
 
   // init
@@ -1198,6 +1392,7 @@ function updateChartTo(idx){
 </script>
 </body>
 </html>
+
 
 
 
