@@ -1173,8 +1173,7 @@
     recomputeLive();
   }
 
-  
-// --- EXPORT FUNCTIONS ---
+  // --- EXPORT FUNCTIONS ---
 
   function downloadFile(content, fileName, mimeType) {
     const a = document.createElement("a");
@@ -1188,13 +1187,14 @@
 
   btnJson.addEventListener("click", () => {
     if(!frozenRunData) return;
-   
+    
     const d = frozenRunData;
     const exportObj = {
       provenance: {
         module: "1D Shock Response",
         version: "1.0",
         timestamp: new Date().toISOString(),
+     
       },
       inputs: {
         W: d.W, k: d.k, c: d.c, g: d.g, Gpk: d.Gpk, 
@@ -1227,12 +1227,12 @@
     // Columns: t_sec, abase_g, aweight
     let csv = "t_sec,abase_g,aweight\n";
     for(let i=0; i<d.t.length; i++){
-      // Fixed: Removed the extra '}' inside the string template below
-      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}\n`;
+      // using simple number conversion to string
+      csv += `${d.t[i]},${d.abase[i]},${d.aweight[i]}}\n`;
     }
     downloadFile(csv, "time_history.csv", "text/csv");
 
-    // Fixed: Removed the extra '}' that was here
+//    }
   });
 
 
@@ -1253,10 +1253,9 @@
   recomputeLive();
 })();
 </script>
-
-
 </body>
 </html>
+
 
 
 
