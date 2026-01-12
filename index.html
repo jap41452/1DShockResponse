@@ -899,17 +899,23 @@ layout: { padding: { bottom: 8 } },  // add this
         labels: psdSeries.f.map(v => String(v)),
         datasets: [{ data: psdSeries.s, borderWidth: 2, pointRadius: 2, tension: 0 }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: { legend: { display:false } },
-        scales: {
-          x: { title: { display:true, text:"Frequency (Hz)" } },
-          y: { title: { display:true, text:"g²/Hz" } }
-        }
-      }
+options: {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  layout: { padding: { bottom: 18 } },
+  plugins: { legend: { display:false } },
+  scales: {
+    x: { title: { display:true, text:"Frequency (Hz)" } },
+    y: { title: { display:true, text:"g²/Hz" } }
+  }
+}
+
     });
+
+
+
+
 
     const t = randomInput.t;
     const a = randomInput.abase;
@@ -930,11 +936,14 @@ layout: { padding: { bottom: 8 } },  // add this
         datasets: [{ data: aPlot, borderWidth: 2, pointRadius: 0, tension: 0 }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: { legend: { display:false } },
-        scales: {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  layout: { padding: { bottom: 18 } },
+  plugins: { legend: { display:false } },
+  scales: {
+
+        
           x: { title: { display:true, text:"Time (s)" }, ticks: { maxTicksLimit: 6 } },
           y: { title: { display:true, text:"g" } }
         }
@@ -1182,6 +1191,7 @@ function updateChartTo(idx){
 </script>
 </body>
 </html>
+
 
 
 
