@@ -366,8 +366,10 @@
     <button class="btn" id="stop" disabled>Stop</button>
     <button class="btn" id="reset">Reset</button>
     
-    <button class="btn" id="btnJson" disabled>JSON</button>
-    <button class="btn" id="btnCsv" disabled>CSV</button>
+<button class="btn" id="btnJson" disabled>JSON</button>
+<button class="btn" id="btnImport">Import JSON</button>
+<button class="btn" id="btnCsv" disabled>CSV</button>
+
 
     <div class="ctl">
       <div style="font-weight:700;">Animation speed</div>
@@ -830,6 +832,99 @@
     ctx.restore();
   }
 
+// --- IMPORT FUNCTION ---
+const btnImport = $("btnImport");
+
+btnImport.addEventListener("click", () => {
+  // Create a file input element
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".json,application/json";
+  
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        
+        // Validate it's our format
+        if (!data.inputs || !data.derivedValues) {
+          alert("Invalid JSON format. Please select a file exported from this module.");
+          return;
+        }
+        
+        // Populate basic inputs
+        inp.W.value = data.inputs.W;
+        inp.k.value = data.inputs.k;
+        inp.c.value = data.inputs.c;
+        inp.g.value = data.inputs.g;
+        inp.Gpk.value = data.inputs.Gpk;
+        inp.Tp.value = data.inputs.Tp_ms;
+        inp.dt.value = data.inputs.dt_ms;
+        inp.shape.value = data.inputs.shape;
+        
+        // If it was a Random simulation, repopulate PSD table
+        if (data.inputs.shape === "random" && data.randomMetadata && data.randomMetadata.psdTable) {
+          const psdTable = data.randomMetadata.psdTable;
+          
+          // Clear all PSD fields first
+          ["f1","s1","f2","s2","f3","s3","f4","s4","f5","s5"].forEach(id => $(id).value = "");
+          
+          // Populate available points
+          psdTable.forEach((pt, i) => {
+            if (i < 5) {
+              $(`f${i+1}`).value = pt.f;
+              $(`s${i+1}`).value = pt.s;
+            }
+          });
+          
+          // Update UI and rebuild random input
+          updateRandomUI();
+          
+          // Auto-build the random input
+          const kpi = computeKPI();
+          if (kpi) {
+            const res = buildRandomTimeHistory(kpi);
+            if (res.ok) {
+              randomInput = {
+                t: res.t,
+                abase: res.abase,
+                dt: res.dt,
+                tStop: res.tStop,
+                gMaxB: res.gMaxB,
+                meta: res.meta,
+                psdPts: res.psdPts
+              };
+              renderRandomCharts();
+              psdStatus.textContent = "Random input rebuilt from imported data. Click Run to simulate.";
+            }
+          }
+        } else {
+          updateRandomUI();
+        }
+        
+        // Recompute and update display
+        recomputeLive();
+        
+        alert("Data imported successfully! Click Run to simulate.");
+        
+      } catch (err) {
+        alert("Error reading JSON file: " + err.message);
+      }
+    };
+    
+    reader.readAsText(file);
+  });
+  
+  // Trigger the file picker
+  fileInput.click();
+});
+
+
+
   // ---------- Random charts ----------
   function destroyRandomCharts(){
     if (psdChartObj){ psdChartObj.destroy(); psdChartObj = null; }
@@ -1179,6 +1274,7 @@
 
 </body>
 </html>
+
 
 
 
